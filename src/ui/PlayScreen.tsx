@@ -196,7 +196,7 @@ export default function PlayScreen() {
     session.addHop(fromP[0]);
   };
 
-  const onDieClick = (i: number) => setFirstDie(i);
+  const onDieClick = () => setFirstDie((f) => (f === 0 ? 1 : 0));
 
   const downloadMat = async () => {
     const text = await session.exportMat();
@@ -221,34 +221,41 @@ export default function PlayScreen() {
 
   return (
     <main className="flex min-h-0 w-full flex-1 flex-col">
-      {/* Status strip */}
-      <div className="z-10 flex flex-wrap items-center gap-x-4 gap-y-0.5 border-b border-white/10 bg-background/70 px-4 py-1.5 text-xs backdrop-blur sm:text-sm">
+      {/* Status strip. In short landscape (phones) it collapses to a single,
+          low-profile line and respects the left/right notch so the board can
+          claim the reclaimed height. */}
+      <div className="z-10 flex flex-wrap items-center gap-x-4 gap-y-0.5 border-b border-white/10 bg-background/70 px-4 py-1.5 text-xs backdrop-blur sm:text-sm short-landscape:flex-nowrap short-landscape:gap-x-2 short-landscape:overflow-hidden short-landscape:py-0.5 short-landscape:pl-[max(0.75rem,env(safe-area-inset-left))] short-landscape:pr-[max(0.75rem,env(safe-area-inset-right))] short-landscape:text-[11px]">
         <Button
           asChild
           size="sm"
           variant="ghost"
-          className="-ml-2 h-7 px-2 text-muted-foreground hover:text-foreground"
+          className="-ml-2 h-7 shrink-0 px-2 text-muted-foreground hover:text-foreground short-landscape:h-6 short-landscape:px-1.5"
         >
           <Link to="/">
             <ChevronLeft className="size-4" />
             Home
           </Link>
         </Button>
-        <span className="text-foreground">
+        <span className="shrink-0 text-foreground">
           Match to {b.matchLength}
           <span className="text-muted-foreground"> · </span>
           You {b.myScore} — {b.oppScore} gnubg
           {b.crawford && <span className="text-primary"> · Crawford</span>}
         </span>
         <Separator orientation="vertical" className="hidden h-4! sm:block" />
-        <span className="text-muted-foreground">
+        <span className="shrink-0 text-muted-foreground">
           Pips: you {pips.mine} · gnubg {pips.theirs}
         </span>
-        <span className="ml-auto font-medium text-primary">{statusMsg}</span>
+        <span className="ml-auto truncate pl-2 text-right font-medium text-primary">{statusMsg}</span>
       </div>
 
-      {/* Board arena: board fills all remaining viewport, aspect preserved */}
-      <div ref={arenaRef} className="relative m-2 min-h-0 flex-1">
+      {/* Board arena: board fills all remaining viewport, aspect preserved. In
+          short landscape the margin collapses (and gives way to notch-safe
+          insets) so the height-constrained board grows to fill the height. */}
+      <div
+        ref={arenaRef}
+        className="relative m-2 min-h-0 flex-1 short-landscape:ml-[max(0px,env(safe-area-inset-left))] short-landscape:mr-[max(0px,env(safe-area-inset-right))] short-landscape:mb-[max(0px,env(safe-area-inset-bottom))] short-landscape:mt-0"
+      >
         {box && (
           <div
             className="absolute"
@@ -357,7 +364,7 @@ export default function PlayScreen() {
           <Button
             size="sm"
             variant="ghost"
-            className="absolute bottom-1 right-1 z-10 bg-background/60 text-muted-foreground backdrop-blur hover:text-foreground"
+            className="absolute bottom-1 right-1 z-10 bg-background/60 text-muted-foreground backdrop-blur hover:text-foreground short-landscape:bottom-[max(0.25rem,env(safe-area-inset-bottom))] short-landscape:right-[max(0.25rem,env(safe-area-inset-right))]"
             onClick={() => setShowResign(true)}
           >
             Resign
