@@ -181,6 +181,11 @@
   stroke-width: 2;
 }
 
+.die-used {
+  fill: oklch(0.2 0.014 55 / 72%);        /* consumed portion of a die */
+  stroke: none;
+}
+
 /* Pips are siblings of the die rect inside the same <g>. */
 .die-me ~ .die-pip {
   fill: oklch(0.24 0.02 55);

@@ -305,7 +305,11 @@ export class Session {
   }
 
   undoHops() {
-    this.update({ pendingHops: [], canCommit: false });
+    const next = this.state.pendingHops.slice(0, -1);
+    this.update({
+      pendingHops: next,
+      canCommit: isComplete(this.state.legal, next),
+    });
   }
 
   continuationsNow(): CheckerHop[] {

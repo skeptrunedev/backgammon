@@ -1,6 +1,7 @@
 import type { BoardState, CheckerHop } from '../engine/types';
 import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
+import { dieUsage } from '../game/rules';
 
 const W = 1320;
 const H = 960;
@@ -167,14 +168,28 @@ export default function Board({
     if (!showDice || board.dice[0] === 0) return null;
     const mine = board.turn === 1;
     const cx = mine ? (barRight + trayLeft) / 2 : (boardLeft + barLeft) / 2;
+    const usage = mine ? dieUsage(board.dice, pendingHops) : [0, 0];
+    const isDouble = board.dice[0] === board.dice[1];
     return (
       <g>
-        {[0, 1].map((i) => (
-          <g key={i} transform={`translate(${cx - 70 + i * 80}, ${H / 2 - 30})`}>
-            <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
-            {diePips(board.dice[i])}
-          </g>
-        ))}
+        {[0, 1].map((i) => {
+          const frac = isDouble ? usage[i] / 2 : usage[i];
+          return (
+            <g key={i} transform={`translate(${cx - 70 + i * 80}, ${H / 2 - 30})`}>
+              <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
+              {diePips(board.dice[i])}
+              {frac > 0 && (
+                <rect
+                  width={60}
+                  height={60 * frac}
+                  y={60 - 60 * frac}
+                  rx={12}
+                  className="die-used"
+                />
+              )}
+            </g>
+          );
+        })}
       </g>
     );
   };

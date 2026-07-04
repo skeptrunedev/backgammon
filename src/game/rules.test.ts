@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { legalSequences, continuations, isComplete, pipCounts } from './rules';
+import { legalSequences, continuations, isComplete, pipCounts, dieUsage } from './rules';
 import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand } from '../engine/parse';
 import { BAR, OFF } from '../engine/types';
 
@@ -141,6 +141,37 @@ describe('position application', () => {
     const a = parseMoveString('13/11 11/8');
     const b = parseMoveString('13/8');
     expect(sameCheckerPlay(p, a, b)).toBe(true);
+  });
+});
+
+describe('dieUsage', () => {
+  it('attributes hops to the matching die', () => {
+    expect(dieUsage([3, 1], [])).toEqual([0, 0]);
+    expect(dieUsage([3, 1], [{ from: 8, to: 5 }])).toEqual([1, 0]);
+    expect(dieUsage([3, 1], [{ from: 6, to: 5 }])).toEqual([0, 1]);
+    expect(
+      dieUsage([3, 1], [{ from: 8, to: 5 }, { from: 6, to: 5 }]),
+    ).toEqual([1, 1]);
+  });
+
+  it('handles bar entry distances', () => {
+    expect(dieUsage([6, 2], [{ from: BAR, to: 19 }])).toEqual([1, 0]);
+    expect(dieUsage([6, 2], [{ from: BAR, to: 23 }])).toEqual([0, 1]);
+  });
+
+  it('attributes oversized bear-offs to a larger unused die', () => {
+    expect(dieUsage([6, 3], [{ from: 5, to: OFF }])).toEqual([1, 0]);
+    expect(
+      dieUsage([6, 3], [{ from: 3, to: OFF }, { from: 5, to: OFF }]),
+    ).toEqual([1, 1]);
+  });
+
+  it('counts doubles in halves across two dice', () => {
+    const hop = { from: 13, to: 11 };
+    expect(dieUsage([2, 2], [hop])).toEqual([1, 0]);
+    expect(dieUsage([2, 2], [hop, hop])).toEqual([2, 0]);
+    expect(dieUsage([2, 2], [hop, hop, hop])).toEqual([2, 1]);
+    expect(dieUsage([2, 2], [hop, hop, hop, hop])).toEqual([2, 2]);
   });
 });
 

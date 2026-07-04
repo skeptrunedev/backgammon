@@ -130,6 +130,37 @@ export function hopIsHit(points: number[], hop: CheckerHop): boolean {
   return hop.to !== OFF && points[hop.to] === -1;
 }
 
+export function dieUsage(
+  dice: [number, number],
+  hops: CheckerHop[],
+): [number, number] {
+  const [a, b] = dice;
+  if (a === b) {
+    const used = Math.min(hops.length, 4);
+    return [Math.min(2, used), Math.max(0, used - 2)];
+  }
+  let usedA = 0;
+  let usedB = 0;
+  for (const h of hops) {
+    const dist = h.from - (h.to === OFF ? 0 : h.to);
+    if (dist === a && usedA === 0) {
+      usedA = 1;
+      continue;
+    }
+    if (dist === b && usedB === 0) {
+      usedB = 1;
+      continue;
+    }
+    const canA = usedA === 0 && a > dist;
+    const canB = usedB === 0 && b > dist;
+    if (canA && (!canB || a <= b)) usedA = 1;
+    else if (canB) usedB = 1;
+    else if (usedA === 0) usedA = 1;
+    else usedB = 1;
+  }
+  return [usedA, usedB];
+}
+
 export function pipCounts(points: number[]): { mine: number; theirs: number } {
   let mine = 0;
   let theirs = 0;
