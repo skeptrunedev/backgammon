@@ -1,15 +1,35 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "bg",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
   },
   "routes": [
     {
       "pattern": "bg.skeptrune.com",
       "custom_domain": true
     }
-  ]
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "bg",
+      "database_id": "eba8110a-38f9-4740-a04c-02cdde0e2f02"
+    }
+  ],
+  // Non-secret config. Locally, .dev.vars overrides these.
+  // Secrets (BETTER_AUTH_SECRET, SMTP_PASSWORD) live in .dev.vars locally and
+  // `wrangler secret put` in prod — never here.
+  "vars": {
+    "BETTER_AUTH_URL": "https://bg.skeptrune.com",
+    "SMTP_HOST": "smtp.fastmail.com",
+    "SMTP_PORT": "465",
+    "SMTP_USER": "me@skeptrune.com"
+  }
 }

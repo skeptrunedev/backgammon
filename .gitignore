@@ -6,3 +6,4 @@ public/engine/gnubg.data
 public/engine/LICENSE-NOTICE.txt
 *.local
 .DS_Store
+.dev.vars

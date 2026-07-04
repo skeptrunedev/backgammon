@@ -17,6 +17,14 @@ const barLeft = boardLeft + COL_W * 6;
 const barRight = barLeft + BAR_W;
 const trayLeft = W - FRAME - TRAY_W;
 
+/** Board intrinsic dimensions (viewBox units). */
+export const BOARD_W = W;
+export const BOARD_H = H;
+/** Horizontal center of the player's dice cluster, as a % of board width. */
+export const DICE_CENTER_X_PCT = (((barRight + trayLeft) / 2) / W) * 100;
+/** Anchor just below the dice (dice span H/2±30), as a % of board height. */
+export const BELOW_DICE_Y_PCT = ((H / 2 + 50) / H) * 100;
+
 function pointX(p: number): number {
   if (p >= 1 && p <= 6) return barRight + (6 - p) * COL_W;
   if (p >= 7 && p <= 12) return boardLeft + (12 - p) * COL_W;
@@ -37,6 +45,8 @@ interface Props {
   onPointClick?: (p: number) => void;
   showDice?: boolean;
   mini?: boolean;
+  /** Fill the parent box exactly (parent is sized to the 1320:960 aspect). */
+  fill?: boolean;
 }
 
 export default function Board({
@@ -48,6 +58,7 @@ export default function Board({
   onPointClick,
   showDice = true,
   mini = false,
+  fill = false,
 }: Props) {
   const points = applyHopsToPoints(board.points, pendingHops);
   const pendingOff = pendingHops.filter((h) => h.to === OFF).length;
@@ -208,7 +219,12 @@ export default function Board({
   };
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={mini ? 'board mini' : 'board'} role="img" aria-label="backgammon board">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className={mini ? 'board mini' : fill ? 'board fill' : 'board'}
+      role="img"
+      aria-label="backgammon board"
+    >
       <rect x={0} y={0} width={W} height={H} rx={18} fill="var(--frame)" />
       <rect x={boardLeft} y={FRAME} width={barLeft - boardLeft} height={H - FRAME * 2} fill="var(--felt)" />
       <rect x={barRight} y={FRAME} width={trayLeft - barRight} height={H - FRAME * 2} fill="var(--felt)" />

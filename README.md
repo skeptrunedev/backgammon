@@ -72,6 +72,56 @@ npm run deploy   # fetch-engine + build + wrangler deploy
 fallback rules are needed. The service worker precaches the engine, so the
 app is installable and fully playable offline after first load.
 
+## Auth & API
+
+The same Worker that serves the static app also hosts a small backend:
+[better-auth](https://www.better-auth.com/) with email-OTP sign-in, plus a
+per-user match storage API backed by Cloudflare D1. Requests to `/api/*` run
+the Worker first (`run_worker_first`); everything else is served from static
+assets.
+
+### Endpoints
+
+- `ALL /api/auth/*` — better-auth handler. Sign-in is passwordless: POST
+  `/api/auth/email-otp/send-verification-otp` with `{ email, type: "sign-in" }`
+  emails a 6-digit code (valid 10 minutes, sent via Fastmail SMTP using
+  worker-mailer), then POST `/api/auth/sign-in/email-otp` with `{ email, otp }`.
+  Signing in auto-creates the user.
+- `GET /api/me` — `{ user: { id, email } }` or `401`.
+- `GET /api/matches` — list of the session user's match summaries, newest first.
+- `GET /api/matches/:id` — `{ match: <full MatchRecord> }` (`404`/`403`).
+- `PUT /api/matches/:id` — upsert a full `MatchRecord` (see
+  `src/game/records.ts`); owner-enforced, bodies over 900 KB are rejected
+  with `413`. Returns `{ ok: true, updatedAt }`.
+- `DELETE /api/matches/:id` — owner-enforced delete.
+
+### Local development
+
+```bash
+cp .dev.vars.example .dev.vars   # fill in real values
+npm run migrate                  # apply D1 migrations locally
+npm run dev:api                  # wrangler dev on :8787 (API + built assets)
+npm run dev                      # vite on :5173, proxies /api -> :8787
+```
+
+Secrets and SMTP config live in `.dev.vars` (gitignored); non-secret vars are
+also in `wrangler.jsonc` `vars` for production. `.dev.vars` overrides them
+locally.
+
+### Production setup (one-time)
+
+```bash
+npx wrangler secret put BETTER_AUTH_SECRET   # openssl rand -base64 32
+npx wrangler secret put SMTP_PASSWORD
+npm run migrate:remote                       # apply D1 migrations remotely
+npm run deploy
+```
+
+Database: D1 `bg` (`eba8110a-38f9-4740-a04c-02cdde0e2f02`). Migrations live in
+`migrations/` (`0001` better-auth schema, `0002` matches table). The better-auth
+schema was generated with `npx @better-auth/cli generate` — regenerate it if you
+upgrade better-auth or add plugins with their own tables.
+
 ## Engine licensing
 
 This repository is MIT licensed, but it does **not** include GNU Backgammon.

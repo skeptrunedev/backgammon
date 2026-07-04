@@ -1,0 +1,6 @@
+BETTER_AUTH_SECRET=generate-with-openssl-rand-base64-32
+BETTER_AUTH_URL=http://localhost:8787
+SMTP_HOST=smtp.fastmail.com
+SMTP_PORT=465
+SMTP_USER=you@example.com
+SMTP_PASSWORD=your-smtp-app-password

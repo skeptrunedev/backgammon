@@ -1,10 +1,12 @@
 import { get, set, del, keys } from 'idb-keyval';
 import type { MatchRecord } from './records';
+import { schedulePush } from './sync';
 
 const PREFIX = 'match:';
 
 export async function saveMatch(rec: MatchRecord): Promise<void> {
   await set(PREFIX + rec.id, rec);
+  schedulePush(rec);
 }
 
 export async function loadMatch(id: string): Promise<MatchRecord | undefined> {

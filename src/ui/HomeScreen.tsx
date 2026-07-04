@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SettingsIcon, Trash2Icon, DownloadIcon, PlayIcon } from 'lucide-react';
 import { useSession } from './useSession';
+import { useUser } from '../auth/client';
 import { listMatches, deleteMatch } from '../game/store';
+import { subscribe as subscribeSync, getSyncStatus, type SyncStatus } from '../game/sync';
 import { matchStats, type MatchRecord } from '../game/records';
 import { loadAiSettings, saveAiSettings } from '../ai/explain';
 import { downloadText, matFilename } from './download';
@@ -45,10 +47,13 @@ const PLY_OPTIONS = [
 
 export default function HomeScreen() {
   const { session, state } = useSession();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [length, setLength] = useState('7');
   const [plies, setPlies] = useState('2');
   const [matches, setMatches] = useState<MatchRecord[]>([]);
+
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
 
   const refresh = useCallback(() => {
     void listMatches().then(setMatches);
@@ -57,6 +62,16 @@ export default function HomeScreen() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Re-read the local list whenever a server pull settles.
+  useEffect(
+    () =>
+      subscribeSync(() => {
+        setSyncStatus(getSyncStatus());
+        refresh();
+      }),
+    [refresh],
+  );
 
   const matchInProgress =
     state.matchId !== null &&
@@ -144,6 +159,13 @@ export default function HomeScreen() {
       <Card>
         <CardHeader>
           <CardTitle>Match history</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            {user
+              ? syncStatus === 'error'
+                ? 'Sync failed — offline?'
+                : `Synced to ${user.email}`
+              : 'Sign in to back up matches across devices.'}
+          </p>
           <CardDescription>
             Finished and in-progress matches stored in this browser.
           </CardDescription>
