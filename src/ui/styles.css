@@ -203,6 +203,12 @@
   stroke: none;
 }
 
+.die-active {
+  fill: none;
+  stroke: var(--hl);                       /* ring on the die played first */
+  stroke-width: 4;
+}
+
 /* Pips are siblings of the die rect inside the same <g>. */
 .die-me ~ .die-pip {
   fill: oklch(0.24 0.02 55);

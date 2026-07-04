@@ -27,13 +27,19 @@ function Kbd({ children }: { children: ReactNode }) {
 
 export default function PlayScreen() {
   const { session, state } = useSession();
-  const [selected, setSelected] = useState<number | null>(null);
+  const [firstDie, setFirstDie] = useState(0);
   const [showResign, setShowResign] = useState(false);
 
   const conts = useMemo(
     () => (state.phase === 'moving' ? session.continuationsNow() : []),
     [session, state.phase, state.pendingHops, state.legal],
   );
+
+  // Reset the preferred die whenever a fresh roll arrives.
+  const rollKey = `${state.board?.dice[0]}-${state.board?.dice[1]}-${state.phase}`;
+  useEffect(() => {
+    setFirstDie(0);
+  }, [rollKey]);
 
   // Measure the board arena so the board box (and its HTML overlay) can be
   // sized to the exact 1320:960 rectangle contained in it.
@@ -60,11 +66,9 @@ export default function PlayScreen() {
 
   const undo = useCallback(() => {
     session.undoHops();
-    setSelected(null);
   }, [session]);
 
   const commit = useCallback(async () => {
-    setSelected(null);
     await session.commitMove();
   }, [session]);
 
@@ -131,19 +135,29 @@ export default function PlayScreen() {
   const b = state.board;
   const pips = pipCounts(b.points);
   const sources = [...new Set(conts.map((h) => h.from))];
-  const dests = selected !== null ? conts.filter((h) => h.from === selected).map((h) => h.to) : [];
 
+  const hopDist = (h: { from: number; to: number }) =>
+    h.from - (h.to === 0 ? 0 : h.to);
+
+  // Single click: play the checker on `p` using the preferred die if it's
+  // legal from there, otherwise the other die. (Combined moves are made with
+  // successive clicks, since continuations recompute after each hop.)
   const onPointClick = (p: number) => {
     if (state.phase !== 'moving') return;
-    if (selected !== null && dests.includes(p)) {
-      session.addHop({ from: selected, to: p });
-      setSelected(null);
-      return;
+    const fromP = conts.filter((h) => h.from === p);
+    if (fromP.length === 0) return;
+    const order = firstDie === 0 ? [b.dice[0], b.dice[1]] : [b.dice[1], b.dice[0]];
+    for (const d of order) {
+      const hop = fromP.find((h) => hopDist(h) === d);
+      if (hop) {
+        session.addHop(hop);
+        return;
+      }
     }
-    if (sources.includes(p)) {
-      setSelected(p === selected ? null : p);
-    }
+    session.addHop(fromP[0]);
   };
+
+  const onDieClick = (i: number) => setFirstDie(i);
 
   const downloadMat = async () => {
     const text = await session.exportMat();
@@ -195,9 +209,9 @@ export default function PlayScreen() {
               board={b}
               pendingHops={state.pendingHops}
               sources={state.phase === 'moving' ? sources : []}
-              dests={dests}
-              selected={selected}
               onPointClick={onPointClick}
+              activeDie={firstDie}
+              onDieClick={state.phase === 'moving' ? onDieClick : undefined}
             />
 
             {/* HTML overlay in board coordinates; only buttons take pointer events */}
@@ -253,9 +267,13 @@ export default function PlayScreen() {
                       </>
                     )}
                   </div>
-                  {state.phase === 'moving' && sources.includes(BAR) && (
-                    <span className="rounded bg-background/70 px-2 py-0.5 text-xs text-muted-foreground backdrop-blur">
-                      Enter from the bar
+                  {state.phase === 'moving' && (
+                    <span className="rounded bg-background/70 px-2 py-0.5 text-center text-xs text-muted-foreground backdrop-blur">
+                      {sources.includes(BAR)
+                        ? 'Tap a bar checker to enter'
+                        : b.dice[0] === b.dice[1]
+                          ? 'Tap a checker to move it'
+                          : 'Tap a checker to move · tap a die to lead with it'}
                     </span>
                   )}
                 </div>

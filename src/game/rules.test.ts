@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { legalSequences, continuations, isComplete, pipCounts, dieUsage } from './rules';
+import { legalSequences, continuations, isComplete, pipCounts, dieUsage, deadDice } from './rules';
 import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand } from '../engine/parse';
 import { BAR, OFF } from '../engine/types';
 
@@ -172,6 +172,39 @@ describe('dieUsage', () => {
     expect(dieUsage([2, 2], [hop, hop])).toEqual([2, 0]);
     expect(dieUsage([2, 2], [hop, hop, hop])).toEqual([2, 1]);
     expect(dieUsage([2, 2], [hop, hop, hop, hop])).toEqual([2, 2]);
+  });
+});
+
+describe('deadDice', () => {
+  it('marks neither die dead in a normal position', () => {
+    expect(deadDice(startingPoints(), [3, 1])).toEqual([false, false]);
+  });
+
+  it('marks the die dead whose bar entry is blocked and unusable', () => {
+    const p = new Array(26).fill(0);
+    p[BAR] = 2;
+    p[22] = -2; // blocks entry with a 3 (25-3)
+    p[1] = 13;
+    const [deadA, deadB] = deadDice(p, [3, 1]);
+    expect(deadA).toBe(true);
+    expect(deadB).toBe(false);
+  });
+
+  it('marks both dead on a full dance from the bar', () => {
+    const p = new Array(26).fill(0);
+    p[BAR] = 2;
+    for (let i = 19; i <= 24; i++) p[i] = -2;
+    p[1] = 11;
+    expect(deadDice(p, [3, 5])).toEqual([true, true]);
+  });
+
+  it('keeps a blocked-entry die live when one bar checker can still use it after entering', () => {
+    const p = new Array(26).fill(0);
+    p[BAR] = 1;
+    p[22] = -2; // 3 can't enter, but after entering with 1 the 3 plays elsewhere
+    p[13] = 2;
+    p[8] = 2;
+    expect(deadDice(p, [3, 1])).toEqual([false, false]);
   });
 });
 

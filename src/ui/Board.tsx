@@ -1,7 +1,7 @@
 import type { BoardState, CheckerHop } from '../engine/types';
 import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
-import { dieUsage } from '../game/rules';
+import { dieUsage, deadDice } from '../game/rules';
 
 const W = 1320;
 const H = 960;
@@ -47,6 +47,9 @@ interface Props {
   mini?: boolean;
   /** Fill the parent box exactly (parent is sized to the 1320:960 aspect). */
   fill?: boolean;
+  /** Index of the player's die that will be tried first on a click. */
+  activeDie?: number;
+  onDieClick?: (i: number) => void;
 }
 
 export default function Board({
@@ -59,6 +62,8 @@ export default function Board({
   showDice = true,
   mini = false,
   fill = false,
+  activeDie = 0,
+  onDieClick,
 }: Props) {
   const points = applyHopsToPoints(board.points, pendingHops);
   const pendingOff = pendingHops.filter((h) => h.to === OFF).length;
@@ -180,13 +185,22 @@ export default function Board({
     const mine = board.turn === 1;
     const cx = mine ? (barRight + trayLeft) / 2 : (boardLeft + barLeft) / 2;
     const usage = mine ? dieUsage(board.dice, pendingHops) : [0, 0];
+    const dead = mine ? deadDice(board.points, board.dice) : [false, false];
     const isDouble = board.dice[0] === board.dice[1];
+    const interactive = mine && !!onDieClick && !isDouble;
     return (
       <g>
         {[0, 1].map((i) => {
-          const frac = isDouble ? usage[i] / 2 : usage[i];
+          const consumed = isDouble ? usage[i] / 2 : usage[i];
+          const frac = dead[i] ? 1 : consumed;
+          const showActive = interactive && !dead[i] && consumed < 1 && activeDie === i;
           return (
-            <g key={i} transform={`translate(${cx - 70 + i * 80}, ${H / 2 - 30})`}>
+            <g
+              key={i}
+              transform={`translate(${cx - 70 + i * 80}, ${H / 2 - 30})`}
+              onClick={() => interactive && !dead[i] && onDieClick!(i)}
+              style={{ cursor: interactive && !dead[i] ? 'pointer' : 'default' }}
+            >
               <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
               {diePips(board.dice[i])}
               {frac > 0 && (
@@ -198,6 +212,9 @@ export default function Board({
                   className="die-used"
                 />
               )}
+              {showActive && (
+                <rect x={-4} y={-4} width={68} height={68} rx={14} className="die-active" />
+              )}
             </g>
           );
         })}
@@ -207,9 +224,12 @@ export default function Board({
 
   const renderCube = () => {
     const centered = board.iMayDouble && board.oppMayDouble;
-    const y = centered ? H / 2 - 32 : board.iMayDouble ? H - FRAME - 90 : FRAME + 26;
+    // Owned cube sits on the left rail, hugging the owner's side of the board
+    // (me = bottom, opponent = top); centered on the rail when neither owns it.
+    const y = centered ? H / 2 - 32 : board.iMayDouble ? H - FRAME - 68 : FRAME + 4;
+    const x = boardLeft - 8;
     return (
-      <g transform={`translate(${boardLeft + 6}, ${y})`}>
+      <g transform={`translate(${x}, ${y})`}>
         <rect width={64} height={64} rx={10} className="cube" />
         <text x={32} y={42} textAnchor="middle" className="cube-text">
           {board.cubeValue === 1 ? 64 : board.cubeValue}

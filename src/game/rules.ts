@@ -161,6 +161,30 @@ export function dieUsage(
   return [usedA, usedB];
 }
 
+/**
+ * Which of the two shown dice cannot be played at all this turn (e.g. a checker
+ * on the bar that can't enter on that number). Derived from the legal maximal
+ * sequences: a die is dead if no legal play ever uses it. Doubles are reported
+ * as [false, false] unless the whole roll is a dance (both dead).
+ */
+export function deadDice(
+  points: number[],
+  dice: [number, number],
+): [boolean, boolean] {
+  const seqs = legalSequences(points, dice);
+  if (seqs.length === 1 && seqs[0].length === 0) return [true, true];
+  if (dice[0] === dice[1]) return [false, false];
+  let aUsable = false;
+  let bUsable = false;
+  for (const seq of seqs) {
+    const [ua, ub] = dieUsage(dice, seq);
+    if (ua > 0) aUsable = true;
+    if (ub > 0) bUsable = true;
+    if (aUsable && bUsable) break;
+  }
+  return [!aUsable, !bUsable];
+}
+
 export function pipCounts(points: number[]): { mine: number; theirs: number } {
   let mine = 0;
   let theirs = 0;
