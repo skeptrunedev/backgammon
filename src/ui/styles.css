@@ -108,6 +108,15 @@
     @apply font-sans;
     color-scheme: dark;
     }
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label:has(> input[type="checkbox"]),
+  [data-slot="select-trigger"]:not(:disabled) {
+    cursor: pointer;
+    }
+  button:disabled {
+    cursor: not-allowed;
+    }
 }
 
 /* ---------- SVG board ---------- */
