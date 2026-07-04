@@ -60,6 +60,18 @@ mistake report is ready the moment the match ends. Checker-play equity losses
 use gnubg's move filters (top candidates at full ply, the rest at 0-ply), the
 same trade-off gnubg's own analysis uses.
 
+## Deploying
+
+Deployed to Cloudflare Workers (static assets) at https://bg.skeptrune.com:
+
+```bash
+npm run deploy   # fetch-engine + build + wrangler deploy
+```
+
+`wrangler.jsonc` maps the custom domain; the SPA uses hash routing so no
+fallback rules are needed. The service worker precaches the engine, so the
+app is installable and fully playable offline after first load.
+
 ## Engine licensing
 
 This repository is MIT licensed, but it does **not** include GNU Backgammon.

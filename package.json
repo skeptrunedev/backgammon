@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "type": "tsc -b --noEmit",
-    "smoke": "node scripts/engine-smoke.cjs"
+    "smoke": "node scripts/engine-smoke.cjs",
+    "deploy": "npm run fetch-engine && npm run build && wrangler deploy"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
@@ -35,6 +36,7 @@
     "typescript": "^5.8.0",
     "vite": "^6.3.0",
     "vite-plugin-pwa": "^1.0.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "wrangler": "^4.107.0"
   }
 }

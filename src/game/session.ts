@@ -138,7 +138,6 @@ export class Session {
       thinking: true,
     });
     for (const cmd of [
-      'set player 1 name You',
       `set player 0 chequerplay evaluation plies ${aiPlies}`,
       'set player 0 chequerplay evaluation prune on',
       `set player 0 cubedecision evaluation plies ${aiPlies}`,
@@ -150,6 +149,7 @@ export class Session {
       for (const line of out) console.debug('[gnubg setup]', cmd, '->', line);
     }
     await this.act(`new match ${length}`);
+    await this.engine.command('set player 1 name You');
     await this.settle();
   }
 
