@@ -41,7 +41,6 @@ interface Props {
   pendingHops?: CheckerHop[];
   sources?: number[];
   dests?: number[];
-  selected?: number | null;
   onPointClick?: (p: number) => void;
   showDice?: boolean;
   mini?: boolean;
@@ -57,7 +56,6 @@ export default function Board({
   pendingHops = [],
   sources = [],
   dests = [],
-  selected = null,
   onPointClick,
   showDice = true,
   mini = false,
@@ -78,8 +76,6 @@ export default function Board({
     const baseY = top ? FRAME : H - FRAME;
     const tipY = top ? FRAME + POINT_H : H - FRAME - POINT_H;
     const fill = p % 2 === 0 ? 'var(--pt-a)' : 'var(--pt-b)';
-    const isSrc = sources.includes(p);
-    const isDest = dests.includes(p);
     return (
       <g key={p} onClick={() => clickable(p) && onPointClick!(p)} style={{ cursor: clickable(p) ? 'pointer' : 'default' }}>
         <polygon
@@ -87,14 +83,6 @@ export default function Board({
           fill={fill}
           opacity={0.95}
         />
-        {(isSrc || isDest || selected === p) && (
-          <polygon
-            points={`${x + 2},${baseY} ${x + COL_W - 2},${baseY} ${x + COL_W / 2},${tipY}`}
-            fill="none"
-            stroke={selected === p ? 'var(--hl-strong)' : isDest ? 'var(--hl-dest)' : 'var(--hl)'}
-            strokeWidth={5}
-          />
-        )}
         {renderCheckers(p, points[p], top, x)}
         {!mini && (
           <text x={x + COL_W / 2} y={top ? FRAME - 6 : H - FRAME + 16} className="pt-label" textAnchor="middle">
@@ -148,12 +136,6 @@ export default function Board({
         style={{ cursor: onPointClick && sources.includes(BAR) ? 'pointer' : 'default' }}
       >
         <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill="var(--bar)" />
-        {sources.includes(BAR) && (
-          <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill="none" stroke="var(--hl)" strokeWidth={5} />
-        )}
-        {selected === BAR && (
-          <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill="none" stroke="var(--hl-strong)" strokeWidth={5} />
-        )}
         {items}
       </g>
     );
@@ -167,9 +149,6 @@ export default function Board({
         style={{ cursor: onPointClick && offDest ? 'pointer' : 'default' }}
       >
         <rect x={trayLeft} y={FRAME} width={TRAY_W} height={H - FRAME * 2} fill="var(--tray)" />
-        {offDest && (
-          <rect x={trayLeft} y={FRAME} width={TRAY_W} height={H - FRAME * 2} fill="none" stroke="var(--hl-dest)" strokeWidth={5} />
-        )}
         {Array.from({ length: Math.min(board.oppOff, 15) }, (_, i) => (
           <rect key={`oo${i}`} x={trayLeft + 12} y={FRAME + 10 + i * 22} width={TRAY_W - 24} height={16} rx={4} className="off-opp" />
         ))}
@@ -188,21 +167,23 @@ export default function Board({
     const dead = mine ? deadDice(board.points, board.dice) : [false, false];
     const isDouble = board.dice[0] === board.dice[1];
     const interactive = mine && !!onDieClick && !isDouble;
+    // Render the leading die in the left slot so clicking to reorder visibly
+    // swaps the dice horizontally — no separate highlight needed.
+    const order = mine && activeDie === 1 ? [1, 0] : [0, 1];
     return (
       <g>
-        {[0, 1].map((i) => {
-          const consumed = isDouble ? usage[i] / 2 : usage[i];
-          const frac = dead[i] ? 1 : consumed;
-          const showActive = interactive && !dead[i] && consumed < 1 && activeDie === i;
+        {order.map((di, slot) => {
+          const consumed = isDouble ? usage[di] / 2 : usage[di];
+          const frac = dead[di] ? 1 : consumed;
           return (
             <g
-              key={i}
-              transform={`translate(${cx - 70 + i * 80}, ${H / 2 - 30})`}
-              onClick={() => interactive && !dead[i] && onDieClick!(i)}
-              style={{ cursor: interactive && !dead[i] ? 'pointer' : 'default' }}
+              key={di}
+              transform={`translate(${cx - 70 + slot * 80}, ${H / 2 - 30})`}
+              onClick={() => interactive && !dead[di] && onDieClick!(di)}
+              style={{ cursor: interactive && !dead[di] ? 'pointer' : 'default' }}
             >
               <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
-              {diePips(board.dice[i])}
+              {diePips(board.dice[di])}
               {frac > 0 && (
                 <rect
                   width={60}
@@ -211,9 +192,6 @@ export default function Board({
                   rx={12}
                   className="die-used"
                 />
-              )}
-              {showActive && (
-                <rect x={-4} y={-4} width={68} height={68} rx={14} className="die-active" />
               )}
             </g>
           );
