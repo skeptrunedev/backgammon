@@ -223,11 +223,14 @@ export default function Board({
   };
 
   const renderCube = () => {
+    // The cube is out of play during the Crawford game.
+    if (board.crawford) return null;
     const centered = board.iMayDouble && board.oppMayDouble;
-    // Owned cube sits on the left rail, hugging the owner's side of the board
-    // (me = bottom, opponent = top); centered on the rail when neither owns it.
-    const y = centered ? H / 2 - 32 : board.iMayDouble ? H - FRAME - 68 : FRAME + 4;
-    const x = boardLeft - 8;
+    // The cube lives on the bar (the central rail): resting in the middle when
+    // neither owns it, sliding to the owner's end once it's held (me = bottom,
+    // opponent = top).
+    const x = barLeft + BAR_W / 2 - 32;
+    const y = centered ? H / 2 - 32 : board.iMayDouble ? H - FRAME - 72 : FRAME + 8;
     return (
       <g transform={`translate(${x}, ${y})`}>
         <rect width={64} height={64} rx={10} className="cube" />

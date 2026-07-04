@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { ChevronLeft } from 'lucide-react';
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
@@ -222,6 +223,17 @@ export default function PlayScreen() {
     <main className="flex min-h-0 w-full flex-1 flex-col">
       {/* Status strip */}
       <div className="z-10 flex flex-wrap items-center gap-x-4 gap-y-0.5 border-b border-white/10 bg-background/70 px-4 py-1.5 text-xs backdrop-blur sm:text-sm">
+        <Button
+          asChild
+          size="sm"
+          variant="ghost"
+          className="-ml-2 h-7 px-2 text-muted-foreground hover:text-foreground"
+        >
+          <Link to="/">
+            <ChevronLeft className="size-4" />
+            Home
+          </Link>
+        </Button>
         <span className="text-foreground">
           Match to {b.matchLength}
           <span className="text-muted-foreground"> · </span>
