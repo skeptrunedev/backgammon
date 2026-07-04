@@ -192,6 +192,13 @@ export class Session {
     await this.engine.writeFile('/resume.sgf', record.resumeState);
     await this.act('load match "/resume.sgf"');
     await this.engine.command('set player 1 name You');
+    // After `load match` gnubg's turn engine is not armed the way it is during
+    // live play, so `doNextTurn` no-ops and settle() would stall. If it's the
+    // opponent's turn, kick it explicitly with `play`.
+    const loaded = this.board as BoardState | null;
+    if (loaded && loaded.turn === -1) {
+      await this.act('play');
+    }
     await this.settle();
   }
 
@@ -299,6 +306,9 @@ export class Session {
         const nowKey = this.board ? this.boardKey(this.board) : '';
         if (lines.length === 0 && nowKey === prevKey) {
           quiet += 1;
+          // doNextTurn didn't advance the opponent — its turn engine may be
+          // unarmed (e.g. just after a resume). Kick it with `play`.
+          if (b.turn === -1) await this.act('play');
           if (quiet > 20) {
             this.update({ thinking: false, error: 'Engine stalled — try a new match.' });
             return;

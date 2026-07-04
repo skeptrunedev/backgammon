@@ -27,6 +27,11 @@ export default defineConfig({
         // but never hijack the API.
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        // On redeploy, activate the new service worker immediately, take over
+        // open tabs, and drop stale precaches so users never run old assets.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
       manifest: {
         name: 'Backgammon vs GNU BG',
