@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1a1512"/>
+  <!-- two elongated backgammon points -->
+  <polygon points="120,88 232,88 176,392" fill="#b08d57"/>
+  <polygon points="280,88 392,88 336,392" fill="#4a6b4f"/>
+  <!-- checker -->
+  <circle cx="256" cy="380" r="78" fill="#efe6d2" stroke="#8a7350" stroke-width="10"/>
+</svg>

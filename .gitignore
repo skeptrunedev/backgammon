@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/engine/gnubg.js
+public/engine/gnubg.wasm
+public/engine/gnubg.data
+public/engine/LICENSE-NOTICE.txt
+*.local
+.DS_Store
