@@ -33,6 +33,8 @@ export interface SessionState {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const AI_STEP_DELAY_MS = 900;
+
 export class Session {
   private engine: GnubgClient;
   private listeners = new Set<() => void>();
@@ -243,7 +245,7 @@ export class Session {
           }
         } else {
           quiet = 0;
-          await sleep(200);
+          await sleep(AI_STEP_DELAY_MS);
         }
       }
       this.update({ thinking: false, error: 'Engine did not settle.' });
