@@ -110,35 +110,8 @@ export class Session {
     return [b.points.join(','), b.turn, b.dice.join(','), b.cubeValue, b.wasDoubled, b.myScore, b.oppScore].join('|');
   }
 
-  async newMatch(length: number, aiPlies: number) {
-    if (!this.state.engineReady) return;
-    this.gameNo = 1;
-    this.lastScoreKey = '0:0';
-    this.gameEndText = null;
-    this.matchEndText = null;
-    this.resignOffered = 0;
-    this.board = null;
-    this.record = {
-      id: crypto.randomUUID(),
-      startedAt: Date.now(),
-      finishedAt: null,
-      matchLength: length,
-      playerName: 'You',
-      opponentName: 'gnubg',
-      myScore: 0,
-      oppScore: 0,
-      winner: null,
-      decisions: [],
-      matText: null,
-    };
-    this.update({
-      matchId: this.record.id,
-      banner: null,
-      error: null,
-      pendingHops: [],
-      legal: [],
-      thinking: true,
-    });
+  /** Player/eval strength commands, shared by newMatch and resumeMatch. */
+  private async applyEngineSetup(aiPlies: number) {
     for (const cmd of [
       `set player 0 chequerplay evaluation plies ${aiPlies}`,
       'set player 0 chequerplay evaluation prune on',
@@ -150,9 +123,92 @@ export class Session {
       const out = await this.engine.command(cmd);
       for (const line of out) console.debug('[gnubg setup]', cmd, '->', line);
     }
+  }
+
+  async newMatch(id: string, length: number, aiPlies: number) {
+    if (!this.state.engineReady) return;
+    this.gameNo = 1;
+    this.lastScoreKey = '0:0';
+    this.gameEndText = null;
+    this.matchEndText = null;
+    this.resignOffered = 0;
+    this.board = null;
+    this.record = {
+      id,
+      startedAt: Date.now(),
+      finishedAt: null,
+      matchLength: length,
+      playerName: 'You',
+      opponentName: 'gnubg',
+      myScore: 0,
+      oppScore: 0,
+      winner: null,
+      decisions: [],
+      matText: null,
+      aiPlies,
+    };
+    this.update({
+      matchId: this.record.id,
+      banner: null,
+      error: null,
+      pendingHops: [],
+      legal: [],
+      thinking: true,
+    });
+    await this.applyEngineSetup(aiPlies);
     await this.act(`new match ${length}`);
     await this.engine.command('set player 1 name You');
     await this.settle();
+  }
+
+  /**
+   * Rebuild a match from its persisted gnubg SGF (record.resumeState). Applies
+   * the same strength setup, loads the SGF into the engine VFS, restores
+   * counters, then settles to a stable (pre-roll) state. Live decisions already
+   * in the record are preserved; load match replays internally so settle() adds
+   * no duplicate decisions.
+   */
+  async resumeMatch(record: MatchRecord) {
+    if (!this.state.engineReady) return;
+    if (!record.resumeState) return; // caller (UI) handles missing/finished
+    this.gameNo = record.decisions.length
+      ? Math.max(...record.decisions.map((d) => d.gameNo))
+      : 1;
+    this.lastScoreKey = `${record.myScore}:${record.oppScore}`;
+    this.gameEndText = null;
+    this.matchEndText = null;
+    this.resignOffered = 0;
+    this.board = null;
+    this.record = record;
+    this.update({
+      matchId: record.id,
+      banner: null,
+      error: null,
+      pendingHops: [],
+      legal: [],
+      thinking: true,
+    });
+    await this.applyEngineSetup(record.aiPlies ?? 2);
+    await this.engine.writeFile('/resume.sgf', record.resumeState);
+    await this.act('load match "/resume.sgf"');
+    await this.engine.command('set player 1 name You');
+    await this.settle();
+  }
+
+  /**
+   * Capture the engine's current match state as an SGF and persist it into the
+   * record so the game can be resumed later (this tab, or another device after
+   * sign-in). Called at every stable, user-facing point.
+   */
+  private async snapshot() {
+    if (!this.record) return;
+    try {
+      await this.engine.command('save match "/resume.sgf"');
+      this.record.resumeState = await this.engine.readFile('/resume.sgf');
+      await this.persist();
+    } catch (e) {
+      console.debug('snapshot failed', e);
+    }
   }
 
   private async act(cmd: string): Promise<string[]> {
@@ -183,6 +239,7 @@ export class Session {
           void this.persist();
         }
         if (this.resignOffered > 0) {
+          await this.snapshot();
           this.update({ phase: 'resignOffered', resignValue: this.resignOffered, thinking: false });
           return;
         }
@@ -206,6 +263,7 @@ export class Session {
             .command('hint')
             .then(parseCubeHint)
             .catch(() => null);
+          await this.snapshot();
           this.update({ phase: 'doubleOffered', thinking: false });
           return;
         }
@@ -221,6 +279,7 @@ export class Session {
             .command('hint 200')
             .then(parseCheckerHints)
             .catch(() => []);
+          await this.snapshot();
           this.update({ phase: 'moving', legal, pendingHops: [], canCommit: false, thinking: false });
           return;
         }
@@ -230,6 +289,7 @@ export class Session {
           this.cubeHintPromise = canDouble
             ? this.engine.command('hint').then(parseCubeHint).catch(() => null)
             : null;
+          await this.snapshot();
           this.update({ phase: 'awaitRoll', canDouble, thinking: false });
           return;
         }
@@ -264,6 +324,7 @@ export class Session {
       this.record.winner =
         (b?.myScore ?? 0) > (b?.oppScore ?? 0) ? 'me' : 'opponent';
       this.record.matText = matText;
+      await this.snapshot();
       await this.persist();
     }
     const b2 = this.board;

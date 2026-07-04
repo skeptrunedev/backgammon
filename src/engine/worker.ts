@@ -105,6 +105,9 @@ function handle(req: EngineRequest) {
       post({ response: { id: req.id, ok: true, lines: runCommand(req.cmd.text) } });
     } else if (req.cmd.type === 'nextTurn') {
       post({ response: { id: req.id, ok: true, lines: nextTurn() } });
+    } else if (req.cmd.type === 'writeFile') {
+      g.FS.writeFile(req.cmd.path, req.cmd.contents);
+      post({ response: { id: req.id, ok: true } });
     } else {
       const file = g.FS.readFile(req.cmd.path, { encoding: 'utf8' }) as string;
       post({ response: { id: req.id, ok: true, file } });

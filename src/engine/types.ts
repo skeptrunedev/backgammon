@@ -46,7 +46,8 @@ export interface EngineRequest {
   cmd:
     | { type: 'command'; text: string }
     | { type: 'nextTurn' }
-    | { type: 'readFile'; path: string };
+    | { type: 'readFile'; path: string }
+    | { type: 'writeFile'; path: string; contents: string };
 }
 
 export interface EngineResponse {

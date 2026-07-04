@@ -67,6 +67,10 @@ export class GnubgClient {
     return (await this.send({ type: 'readFile', path })).file ?? '';
   }
 
+  async writeFile(path: string, contents: string): Promise<void> {
+    await this.send({ type: 'writeFile', path, contents });
+  }
+
   terminate() {
     this.worker.terminate();
   }

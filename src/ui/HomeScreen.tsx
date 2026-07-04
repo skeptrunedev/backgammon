@@ -80,9 +80,13 @@ export default function HomeScreen() {
     state.phase !== 'matchOver';
 
   const start = () => {
-    void session.newMatch(Number(length), Number(plies));
-    navigate('/play');
+    const id = crypto.randomUUID();
+    void session.newMatch(id, Number(length), Number(plies));
+    navigate('/play/' + id);
   };
+
+  const inProgress = matches.filter((m) => m.finishedAt == null);
+  const finished = matches.filter((m) => m.finishedAt != null);
 
   const onDelete = async (rec: MatchRecord) => {
     if (!window.confirm('Delete this match and its analysis? This cannot be undone.')) return;
@@ -144,10 +148,10 @@ export default function HomeScreen() {
             2-ply is standard tournament strength; 0-ply is fast and beatable.
           </p>
         </CardContent>
-        {matchInProgress && (
+        {matchInProgress && state.matchId && (
           <CardFooter className="border-t border-white/10 pt-4!">
             <Button variant="outline" asChild>
-              <Link to="/play">
+              <Link to={`/play/${state.matchId}`}>
                 <PlayIcon data-icon="inline-start" />
                 Resume current match
               </Link>
@@ -170,20 +174,46 @@ export default function HomeScreen() {
             Finished and in-progress matches stored in this browser.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-6">
           {matches.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No matches yet. Play one and it will show up here with a full mistake report.
             </p>
           ) : (
-            <ul className="flex flex-col">
-              {matches.map((rec, idx) => (
-                <li key={rec.id}>
-                  {idx > 0 && <Separator className="my-3" />}
-                  <MatchRow rec={rec} onDelete={() => onDelete(rec)} />
-                </li>
-              ))}
-            </ul>
+            <>
+              {inProgress.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    In progress
+                  </p>
+                  <ul className="flex flex-col">
+                    {inProgress.map((rec, idx) => (
+                      <li key={rec.id}>
+                        {idx > 0 && <Separator className="my-3" />}
+                        <MatchRow rec={rec} onDelete={() => onDelete(rec)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {finished.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {inProgress.length > 0 && (
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Finished
+                    </p>
+                  )}
+                  <ul className="flex flex-col">
+                    {finished.map((rec, idx) => (
+                      <li key={rec.id}>
+                        {idx > 0 && <Separator className="my-3" />}
+                        <MatchRow rec={rec} onDelete={() => onDelete(rec)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -193,8 +223,9 @@ export default function HomeScreen() {
 
 function MatchRow({ rec, onDelete }: { rec: MatchRecord; onDelete: () => void }) {
   const s = matchStats(rec);
+  const unfinished = rec.finishedAt == null;
   const result =
-    rec.winner === 'me' ? 'You won' : rec.winner === 'opponent' ? 'gnubg won' : 'Unfinished';
+    rec.winner === 'me' ? 'You won' : rec.winner === 'opponent' ? 'gnubg won' : 'In progress';
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div className="min-w-0 flex-1">
@@ -227,18 +258,29 @@ function MatchRow({ rec, onDelete }: { rec: MatchRecord; onDelete: () => void })
         </div>
       </div>
       <div className="flex items-center gap-1.5">
-        <Button variant="outline" size="sm" asChild>
-          <Link to={`/match/${rec.id}`}>Analysis</Link>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!rec.matText}
-          onClick={() => rec.matText && downloadText(matFilename(rec.startedAt), rec.matText)}
-        >
-          <DownloadIcon data-icon="inline-start" />
-          .mat
-        </Button>
+        {unfinished ? (
+          <Button size="sm" asChild>
+            <Link to={`/play/${rec.id}`}>
+              <PlayIcon data-icon="inline-start" />
+              Resume
+            </Link>
+          </Button>
+        ) : (
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/match/${rec.id}`}>Analysis</Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!rec.matText}
+              onClick={() => rec.matText && downloadText(matFilename(rec.startedAt), rec.matText)}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              .mat
+            </Button>
+          </>
+        )}
         <Button variant="ghost" size="icon-sm" aria-label="Delete match" onClick={onDelete}>
           <Trash2Icon />
         </Button>

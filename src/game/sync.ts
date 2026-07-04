@@ -79,6 +79,27 @@ async function fetchDetail(id: string): Promise<MatchRecord | null> {
   return body.match ?? null;
 }
 
+/**
+ * Return a match by id, offline-first: prefer the local IndexedDB copy; if
+ * absent, try the server (cross-device) and cache it locally. On 401/network
+ * error, fall back to whatever is local (or null). Direct idb writes (not the
+ * hooked saveMatch) so we don't schedule a push right back.
+ */
+export async function fetchMatch(id: string): Promise<MatchRecord | null> {
+  const local = await get<MatchRecord>(PREFIX + id);
+  if (local) return local;
+  try {
+    const detail = await fetchDetail(id);
+    if (detail) {
+      await set(PREFIX + detail.id, detail);
+      return detail;
+    }
+  } catch (err) {
+    console.debug('[sync] fetchMatch failed (offline?)', err);
+  }
+  return null;
+}
+
 let inflightPull: Promise<number> | null = null;
 
 /**

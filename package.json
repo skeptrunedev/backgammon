@@ -14,6 +14,7 @@
     "migrate": "wrangler d1 migrations apply bg --local",
     "migrate:remote": "wrangler d1 migrations apply bg --remote",
     "smoke": "node scripts/engine-smoke.cjs",
+    "resume": "node scripts/engine-resume.cjs",
     "deploy": "npm run fetch-engine && npm run build && wrangler deploy"
   },
   "dependencies": {

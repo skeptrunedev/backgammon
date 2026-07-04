@@ -46,6 +46,10 @@ export interface MatchRecord {
   winner: 'me' | 'opponent' | null;
   decisions: Decision[];
   matText: string | null;
+  /** gnubg AI ply level, so resume restores the same strength. */
+  aiPlies?: number;
+  /** gnubg SGF snapshot (`save match`) of the latest stable position, for resume. */
+  resumeState?: string;
 }
 
 export const BLUNDER = 0.08;

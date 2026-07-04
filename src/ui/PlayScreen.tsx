@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import Board, { BOARD_W, BOARD_H, DICE_CENTER_X_PCT, BELOW_DICE_Y_PCT } from './Board';
 import { useSession } from './useSession';
+import { fetchMatch } from '../game/sync';
 import { pipCounts } from '../game/rules';
 import { BAR } from '../engine/types';
 import { downloadText, matFilename } from './download';
@@ -27,8 +28,37 @@ function Kbd({ children }: { children: ReactNode }) {
 
 export default function PlayScreen() {
   const { session, state } = useSession();
+  const { matchId } = useParams();
+  const navigate = useNavigate();
   const [firstDie, setFirstDie] = useState(0);
   const [showResign, setShowResign] = useState(false);
+  const resumeStartedRef = useRef<string | null>(null);
+
+  // Resume-on-mount: reconstruct the engine for `matchId` unless it's already
+  // the live in-memory session (just-started or same tab). Cross-device pulls
+  // fetch the record from the server first.
+  useEffect(() => {
+    if (!matchId || !state.engineReady) return;
+    // Already the live session — leave gameplay untouched.
+    if (state.matchId === matchId && state.phase !== 'boot') return;
+    if (resumeStartedRef.current === matchId) return;
+    resumeStartedRef.current = matchId;
+    let cancelled = false;
+    void (async () => {
+      const record = await fetchMatch(matchId);
+      if (cancelled) return;
+      if (record && record.finishedAt == null && record.resumeState) {
+        await session.resumeMatch(record);
+      } else if (record && record.finishedAt != null) {
+        navigate(`/match/${matchId}`, { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchId, state.engineReady, state.matchId, state.phase, session, navigate]);
 
   const conts = useMemo(
     () => (state.phase === 'moving' ? session.continuationsNow() : []),
@@ -120,10 +150,18 @@ export default function PlayScreen() {
   ]);
 
   if (!state.board) {
+    const loading =
+      !state.engineReady ||
+      state.thinking ||
+      (!!matchId && state.matchId !== matchId);
     return (
       <main className="flex flex-col items-center gap-4 py-24 text-center">
         <p className="text-muted-foreground">
-          {state.engineReady ? 'No active match.' : 'Loading engine…'}
+          {!state.engineReady
+            ? 'Loading engine…'
+            : loading
+              ? 'Loading game…'
+              : 'No active match.'}
         </p>
         <Button asChild variant="outline">
           <Link to="/">Home</Link>

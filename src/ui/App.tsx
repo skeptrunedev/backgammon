@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import HomeScreen from './HomeScreen';
 import PlayScreen from './PlayScreen';
 import AnalysisScreen from './AnalysisScreen';
@@ -10,15 +10,15 @@ import { Button } from '@/components/ui/button';
 
 export default function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Chrome />
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 
 function Chrome() {
   const { pathname } = useLocation();
-  const fullscreen = pathname === '/play';
+  const fullscreen = pathname.startsWith('/play');
 
   if (fullscreen) {
     return (
@@ -26,7 +26,7 @@ function Chrome() {
         <SessionPuller />
         <Routes>
           <Route path="/" element={<HomeScreen />} />
-          <Route path="/play" element={<PlayScreen />} />
+          <Route path="/play/:matchId" element={<PlayScreen />} />
           <Route path="/match/:id" element={<AnalysisScreen />} />
         </Routes>
       </div>
@@ -52,7 +52,7 @@ function Chrome() {
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6">
         <Routes>
           <Route path="/" element={<HomeScreen />} />
-          <Route path="/play" element={<PlayScreen />} />
+          <Route path="/play/:matchId" element={<PlayScreen />} />
           <Route path="/match/:id" element={<AnalysisScreen />} />
         </Routes>
       </div>

@@ -23,6 +23,10 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,wasm,data}'],
+        // SPA deep links (e.g. /play/:id) resolve to the app shell offline,
+        // but never hijack the API.
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
       },
       manifest: {
         name: 'Backgammon vs GNU BG',
