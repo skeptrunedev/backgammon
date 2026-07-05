@@ -50,6 +50,9 @@ export class Session {
   private cubeHintPromise: Promise<CubeHint | null> | null = null;
   private responseHintPromise: Promise<CubeHint | null> | null = null;
   private settling = false;
+  // True between the human offering a double and gnubg responding to it, so the
+  // pending-cube board state is handled as gnubg's response, not shown to us.
+  private humanDoubled = false;
 
   state: SessionState = {
     phase: 'boot',
@@ -132,6 +135,7 @@ export class Session {
     this.gameEndText = null;
     this.matchEndText = null;
     this.resignOffered = 0;
+    this.humanDoubled = false;
     this.board = null;
     this.record = {
       id,
@@ -178,6 +182,7 @@ export class Session {
     this.gameEndText = null;
     this.matchEndText = null;
     this.resignOffered = 0;
+    this.humanDoubled = false;
     this.board = null;
     this.record = record;
     this.update({
@@ -274,7 +279,23 @@ export class Session {
           }
           continue;
         }
+        if (!b.wasDoubled) this.humanDoubled = false;
         if (b.wasDoubled) {
+          // We offered the double: it's gnubg's turn to respond (take/drop),
+          // which it does automatically — pump for it, don't prompt ourselves.
+          if (this.humanDoubled) {
+            this.update({ phase: 'aiTurn' });
+            const prevKey = this.boardKey(b);
+            const lines = await this.engine.nextTurn();
+            const nowKey = this.board ? this.boardKey(this.board) : '';
+            if (lines.length === 0 && nowKey === prevKey) {
+              await this.act('play');
+            } else {
+              await sleep(AI_STEP_DELAY_MS);
+            }
+            continue;
+          }
+          // gnubg doubled us: it's our decision to take or pass.
           this.boardAtDecision = b;
           // Snapshot the clean position BEFORE any `hint` — running a hint
           // first corrupts the subsequent `save match` (resume plays the roll).
@@ -459,6 +480,7 @@ export class Session {
     if (this.state.phase !== 'awaitRoll' || !this.state.canDouble) return;
     this.update({ thinking: true });
     await this.recordCubeOffer('double');
+    this.humanDoubled = true;
     await this.act('double');
     await this.settle();
   }
