@@ -5,7 +5,6 @@ import Board, { boardMetrics } from './Board';
 import { useSession } from './useSession';
 import { fetchMatch } from '../game/sync';
 import { pipCounts } from '../game/rules';
-import { BAR } from '../engine/types';
 import { downloadText, matFilename } from './download';
 import { Button } from '@/components/ui/button';
 import {
@@ -266,6 +265,16 @@ export default function PlayScreen() {
           Pips: you {pips.mine} · gnubg {pips.theirs}
         </span>
         <span className="ml-auto truncate pl-2 text-right font-medium text-primary">{statusMsg}</span>
+        {playing && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="-mr-2 h-7 shrink-0 px-2 text-muted-foreground hover:text-foreground short-landscape:h-6 short-landscape:px-1.5"
+            onClick={() => setShowResign(true)}
+          >
+            Resign
+          </Button>
+        )}
       </div>
 
       {/* Board arena: board fills all remaining viewport, aspect preserved. In
@@ -273,7 +282,7 @@ export default function PlayScreen() {
           insets) so the height-constrained board grows to fill the height. */}
       <div
         ref={arenaRef}
-        className="relative m-2 min-h-0 flex-1 short-landscape:ml-[max(0px,env(safe-area-inset-left))] short-landscape:mr-[max(0px,env(safe-area-inset-right))] short-landscape:mb-[max(0px,env(safe-area-inset-bottom))] short-landscape:mt-0"
+        className="relative m-2 min-h-0 flex-1 short-landscape:ml-[max(0px,env(safe-area-inset-left))] short-landscape:mr-[max(0px,env(safe-area-inset-right))] short-landscape:mb-[max(0.5rem,env(safe-area-inset-bottom))] short-landscape:mt-2"
       >
         {box && (
           <div
@@ -299,7 +308,7 @@ export default function PlayScreen() {
                   className="absolute flex -translate-x-1/2 flex-col items-center gap-1.5"
                   style={{ left: `${metrics.diceCenterXPct}%`, top: `${metrics.belowDiceYPct}%` }}
                 >
-                  <div className="flex items-center gap-2 rounded-lg bg-background/70 p-1.5 backdrop-blur">
+                  <div className="flex items-center gap-2 rounded-lg bg-background/70 p-1.5 backdrop-blur short-landscape:gap-1 short-landscape:p-1">
                     {state.phase === 'awaitRoll' && (
                       <>
                         <Button
@@ -325,34 +334,29 @@ export default function PlayScreen() {
                     {state.phase === 'moving' && (
                       <>
                         <Button
-                          className="pointer-events-auto"
+                          className="pointer-events-auto short-landscape:h-7 short-landscape:gap-1 short-landscape:px-2.5 short-landscape:text-xs"
                           variant="outline"
                           onClick={undo}
                           disabled={state.pendingHops.length === 0 || state.thinking}
                         >
                           Undo
-                          <Kbd>⌃Z</Kbd>
+                          <span className="short-landscape:hidden">
+                            <Kbd>⌃Z</Kbd>
+                          </span>
                         </Button>
                         <Button
-                          className="pointer-events-auto"
+                          className="pointer-events-auto short-landscape:h-7 short-landscape:gap-1 short-landscape:px-2.5 short-landscape:text-xs"
                           onClick={() => void commit()}
                           disabled={!state.canCommit || state.thinking}
                         >
                           Confirm
-                          <Kbd>⏎</Kbd>
+                          <span className="short-landscape:hidden">
+                            <Kbd>⏎</Kbd>
+                          </span>
                         </Button>
                       </>
                     )}
                   </div>
-                  {state.phase === 'moving' && (
-                    <span className="rounded bg-background/70 px-2 py-0.5 text-center text-xs text-muted-foreground backdrop-blur">
-                      {sources.includes(BAR)
-                        ? 'Tap a bar checker to enter'
-                        : b.dice[0] === b.dice[1]
-                          ? 'Tap a checker to move it'
-                          : 'Tap a checker to move · tap a die to lead with it'}
-                    </span>
-                  )}
                 </div>
               )}
 
@@ -377,18 +381,6 @@ export default function PlayScreen() {
               )}
             </div>
           </div>
-        )}
-
-        {/* Resign: subtle, bottom corner of the play area */}
-        {playing && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="absolute bottom-1 right-1 z-10 bg-background/60 text-muted-foreground backdrop-blur hover:text-foreground short-landscape:bottom-[max(0.25rem,env(safe-area-inset-bottom))] short-landscape:right-[max(0.25rem,env(safe-area-inset-right))]"
-            onClick={() => setShowResign(true)}
-          >
-            Resign
-          </Button>
         )}
 
         {/* Banner / error strips float over the board */}
