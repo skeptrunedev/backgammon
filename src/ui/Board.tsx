@@ -30,17 +30,19 @@ export interface BoardGeom {
 }
 
 function geom(wide: boolean): BoardGeom {
-  const W = wide ? 1640 : 1320;
-  const H = wide ? 744 : 960;
-  const FRAME = 24;
-  const TRAY_W = wide ? 96 : 90;
-  const BAR_W = wide ? 90 : 84;
+  // `wide` (landscape phone) mirrors the proportions of a classic wooden board:
+  // ~1.55:1 aspect with long points that nearly meet in the middle and large
+  // checkers. It letterboxes to ~70% width on a landscape phone — the good feel
+  // comes from the proportions, not from filling every pixel.
+  const W = wide ? 1400 : 1320;
+  const H = wide ? 900 : 960;
+  const FRAME = wide ? 22 : 24;
+  const TRAY_W = wide ? 104 : 90;
+  const BAR_W = wide ? 88 : 84;
   const COL_W = (W - FRAME * 2 - TRAY_W - BAR_W) / 12;
-  // Cap the checker radius smaller in wide mode: a shorter board means a
-  // 5-checker stack must fit in less vertical room. 5 stacked checkers span
-  // ~10R, which must stay within a half-board (H/2 − FRAME).
-  const R = Math.min(COL_W / 2 - 4, wide ? 33 : 40);
-  const POINT_H = wide ? 262 : 340;
+  const R = Math.min(COL_W / 2 - 5, 40);
+  // Long points: tips leave only a small central gap (like the reference board).
+  const POINT_H = wide ? 356 : 340;
   const boardLeft = FRAME;
   const barLeft = boardLeft + COL_W * 6;
   const barRight = barLeft + BAR_W;
