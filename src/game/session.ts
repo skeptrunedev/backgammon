@@ -34,9 +34,6 @@ export interface SessionState {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const AI_STEP_DELAY_MS = 900;
-// Beat after the human confirms a move (their move is on the board) before
-// gnubg starts its turn, so the handoff doesn't feel instant.
-const PAUSE_AFTER_MOVE_MS = 750;
 
 export class Session {
   private engine: GnubgClient;
@@ -344,6 +341,9 @@ export class Session {
         }
         const prevKey = this.boardKey(b);
         this.update({ phase: 'aiTurn' });
+        // Beat BEFORE gnubg's action renders (its dice are already showing), so
+        // each move eases in with anticipation instead of flashing instantly.
+        await sleep(AI_STEP_DELAY_MS);
         const lines = await this.engine.nextTurn();
         const nowKey = this.board ? this.boardKey(this.board) : '';
         if (lines.length === 0 && nowKey === prevKey) {
@@ -357,7 +357,6 @@ export class Session {
           }
         } else {
           quiet = 0;
-          await sleep(AI_STEP_DELAY_MS);
         }
       }
       this.update({ thinking: false, error: 'Engine did not settle.' });
@@ -457,8 +456,6 @@ export class Session {
     if (out.some((l) => /illegal|not legal|invalid/i.test(l))) {
       this.update({ error: 'Engine rejected move: ' + out.join(' ') });
     }
-    // Let the human's completed move sit on the board a beat before gnubg plays.
-    await sleep(PAUSE_AFTER_MOVE_MS);
     await this.settle();
   }
 
