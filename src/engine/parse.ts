@@ -131,6 +131,28 @@ export function applyHopsToPoints(points: number[], hops: CheckerHop[]): number[
   return p;
 }
 
+/**
+ * Apply one of gnubg's hops (its own point numbering, opponent = negative
+ * checkers) to the human-perspective points array. gnubg point N maps to human
+ * index 25-N; its bar is index 0. Used to replay gnubg's move hop-by-hop for
+ * animation. The final frame always uses the engine's authoritative board, so
+ * any reconstruction drift is invisible.
+ */
+export function applyOppHop(points: number[], hop: CheckerHop): number[] {
+  const p = points.slice();
+  if (hop.from === BAR) p[0] += 1;
+  else p[25 - hop.from] += 1;
+  if (hop.to !== OFF) {
+    const idx = 25 - hop.to;
+    if (p[idx] === 1) {
+      p[idx] = 0;
+      p[25] += 1;
+    }
+    p[idx] -= 1;
+  }
+  return p;
+}
+
 export function sameCheckerPlay(
   points: number[],
   a: CheckerHop[],

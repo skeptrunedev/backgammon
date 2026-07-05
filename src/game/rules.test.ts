@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { legalSequences, continuations, isComplete, pipCounts, dieUsage, deadDice } from './rules';
-import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand } from '../engine/parse';
+import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand, applyOppHop } from '../engine/parse';
 import { BAR, OFF } from '../engine/types';
 
 function startingPoints(): number[] {
@@ -205,6 +205,33 @@ describe('deadDice', () => {
     p[13] = 2;
     p[8] = 2;
     expect(deadDice(p, [3, 1])).toEqual([false, false]);
+  });
+});
+
+describe('applyOppHop', () => {
+  it('maps gnubg points (25-N) and moves a negative checker', () => {
+    const p = new Array(26).fill(0);
+    p[1] = -2; // gnubg's 24-point = human index 1
+    const after = applyOppHop(p, { from: 24, to: 23 });
+    expect(after[1]).toBe(-1);
+    expect(after[2]).toBe(-1); // gnubg's 23-point = human index 2
+  });
+
+  it('hits a human blot, sending it to the human bar', () => {
+    const p = new Array(26).fill(0);
+    p[1] = -1;
+    p[2] = 1; // human blot where gnubg lands
+    const after = applyOppHop(p, { from: 24, to: 23 });
+    expect(after[2]).toBe(-1);
+    expect(after[25]).toBe(1); // human checker on the bar
+  });
+
+  it('enters gnubg from the bar', () => {
+    const p = new Array(26).fill(0);
+    p[0] = -1; // gnubg on its bar
+    const after = applyOppHop(p, { from: 25, to: 22 });
+    expect(after[0]).toBe(0);
+    expect(after[3]).toBe(-1); // gnubg's 22-point = human index 3
   });
 });
 

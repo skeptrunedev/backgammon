@@ -1,6 +1,6 @@
 import { getEngine, GnubgClient } from '../engine/client';
 import type { BoardState, CheckerHop, CubeHint, EngineEvent, HintMove } from '../engine/types';
-import { parseCheckerHints, parseCubeHint, parseMoveString, hopsToMoveCommand, sameCheckerPlay } from '../engine/parse';
+import { parseCheckerHints, parseCubeHint, parseMoveString, hopsToMoveCommand, sameCheckerPlay, applyOppHop } from '../engine/parse';
 import { legalSequences, continuations, isComplete } from './rules';
 import type { Decision, MatchRecord } from './records';
 import { buildCheckerDecision, cubeOfferLoss, cubeResponseLoss } from './records';
@@ -34,6 +34,9 @@ export interface SessionState {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const AI_STEP_DELAY_MS = 900;
+// Beat between gnubg's individual checker hops so a multi-checker move plays out
+// step by step instead of landing all at once.
+const CHECKER_STEP_MS = 450;
 
 export class Session {
   private engine: GnubgClient;
@@ -53,6 +56,9 @@ export class Session {
   // True between the human offering a double and gnubg responding to it, so the
   // pending-cube board state is handled as gnubg's response, not shown to us.
   private humanDoubled = false;
+  // While true, board events update internal state but don't render — lets
+  // settle() replay gnubg's move hop-by-hop instead of jumping to the result.
+  private suppressBoardRender = false;
 
   state: SessionState = {
     phase: 'boot',
@@ -96,6 +102,9 @@ export class Session {
         this.gameNo += 1;
         void this.persist();
       }
+      // Internal state is up to date; skip rendering while settle() is driving
+      // its own hop-by-hop replay of gnubg's move.
+      if (this.suppressBoardRender) return;
       // A fresh board from the engine supersedes any pending-move preview.
       // Clear the preview atomically with the new board so the move animates
       // straight to its result — never flashing back to the pre-move position.
@@ -341,12 +350,26 @@ export class Session {
         }
         const prevKey = this.boardKey(b);
         this.update({ phase: 'aiTurn' });
-        // Beat BEFORE gnubg's action renders (its dice are already showing), so
-        // each move eases in with anticipation instead of flashing instantly.
+        // Beat before gnubg's move (its dice are already showing) so it eases in
+        // with anticipation. Pump until the board actually changes — gnubg's
+        // "moves" line can precede the board update by a step — while
+        // suppressing render so we can replay the move hop-by-hop below.
         await sleep(AI_STEP_DELAY_MS);
-        const lines = await this.engine.nextTurn();
-        const nowKey = this.board ? this.boardKey(this.board) : '';
-        if (lines.length === 0 && nowKey === prevKey) {
+        this.suppressBoardRender = true;
+        const collected: string[] = [];
+        let advanced = false;
+        for (let k = 0; k < 8; k++) {
+          const ls = await this.engine.nextTurn();
+          collected.push(...ls);
+          if (this.board && this.boardKey(this.board) !== prevKey) {
+            advanced = true;
+            break;
+          }
+          if (ls.length === 0) break;
+        }
+        this.suppressBoardRender = false;
+        const finalBoard = this.board;
+        if (!advanced || !finalBoard) {
           quiet += 1;
           // doNextTurn didn't advance the opponent — its turn engine may be
           // unarmed (e.g. just after a resume). Kick it with `play`.
@@ -355,9 +378,24 @@ export class Session {
             this.update({ thinking: false, error: 'Engine stalled — try a new match.' });
             return;
           }
-        } else {
-          quiet = 0;
+          continue;
         }
+        quiet = 0;
+        // Replay gnubg's checker hops one at a time with a beat between each;
+        // the last frame uses the engine's authoritative board.
+        const moveMatch = /gnubg moves\s+(.+?)\.?\s*$/i.exec(
+          collected.find((l) => /gnubg moves/i.test(l)) ?? '',
+        );
+        if (moveMatch && b.turn === -1) {
+          const hops = parseMoveString(moveMatch[1]);
+          let working = b.points.slice();
+          for (let k = 0; k < hops.length - 1; k++) {
+            working = applyOppHop(working, hops[k]);
+            this.update({ board: { ...b, points: working } });
+            await sleep(CHECKER_STEP_MS);
+          }
+        }
+        this.update({ board: finalBoard });
       }
       this.update({ thinking: false, error: 'Engine did not settle.' });
     } finally {
