@@ -50,6 +50,12 @@ export interface MatchRecord {
   aiPlies?: number;
   /** gnubg SGF snapshot (`save match`) of the latest stable position, for resume. */
   resumeState?: string;
+  /**
+   * The dice showing at snapshot time. `load match` drops the pending roll, so
+   * on resume we re-apply these with `set dice` to restore the exact roll.
+   * [0,0] means the human hadn't rolled yet (resume to "your roll").
+   */
+  pendingDice?: [number, number];
 }
 
 export const BLUNDER = 0.08;

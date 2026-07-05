@@ -192,13 +192,16 @@ export class Session {
     await this.engine.writeFile('/resume.sgf', record.resumeState);
     await this.act('load match "/resume.sgf"');
     await this.engine.command('set player 1 name You');
-    // After `load match` gnubg's turn engine is not armed the way it is during
-    // live play, so `doNextTurn` no-ops and settle() would stall. If it's the
-    // opponent's turn, kick it explicitly with `play`.
-    const loaded = this.board as BoardState | null;
-    if (loaded && loaded.turn === -1) {
-      await this.act('play');
+    // `load match` leaves the board reading the opponent's turn with no dice,
+    // even though we only ever snapshot on the human's turn. Force the human
+    // back on roll and re-apply the exact roll they had, so resume shows the
+    // same position and dice (and gnubg does NOT get to play an extra move).
+    await this.engine.command('set turn 1');
+    const pd = record.pendingDice;
+    if (pd && pd[0] > 0) {
+      await this.engine.command(`set dice ${pd[0]} ${pd[1]}`);
     }
+    await this.act('show board');
     await this.settle();
   }
 
@@ -212,6 +215,9 @@ export class Session {
     try {
       await this.engine.command('save match "/resume.sgf"');
       this.record.resumeState = await this.engine.readFile('/resume.sgf');
+      this.record.pendingDice = this.board
+        ? [this.board.dice[0], this.board.dice[1]]
+        : [0, 0];
       await this.persist();
     } catch (e) {
       console.debug('snapshot failed', e);
