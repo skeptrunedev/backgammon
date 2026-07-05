@@ -190,17 +190,21 @@ export class Session {
     });
     await this.applyEngineSetup(record.aiPlies ?? 2);
     await this.engine.writeFile('/resume.sgf', record.resumeState);
+    // `load match` will auto-play the pending on-roll move (advancing the
+    // position by the saved roll) when automatic play is on. Disable it around
+    // the load so the position is restored exactly as saved, then re-enable.
+    await this.engine.command('set automatic game off');
+    await this.engine.command('set automatic move off');
     await this.act('load match "/resume.sgf"');
     await this.engine.command('set player 1 name You');
-    // `load match` leaves the board reading the opponent's turn with no dice,
-    // even though we only ever snapshot on the human's turn. Force the human
-    // back on roll and re-apply the exact roll they had, so resume shows the
+    // Force the human back on roll with their exact roll, so resume shows the
     // same position and dice (and gnubg does NOT get to play an extra move).
     await this.engine.command('set turn 1');
     const pd = record.pendingDice;
     if (pd && pd[0] > 0) {
       await this.engine.command(`set dice ${pd[0]} ${pd[1]}`);
     }
+    await this.engine.command('set automatic game on');
     await this.act('show board');
     await this.settle();
   }
