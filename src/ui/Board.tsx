@@ -41,19 +41,18 @@ export interface BoardGeom {
 }
 
 function geom(wide: boolean): BoardGeom {
-  // `wide` (landscape phone) mirrors the proportions of a classic wooden board:
-  // ~1.55:1 aspect with long points that nearly meet in the middle and large
-  // checkers. It letterboxes to ~70% width on a landscape phone — the good feel
-  // comes from the proportions, not from filling every pixel.
-  const W = wide ? 1400 : 1320;
-  const H = wide ? 900 : 960;
+  // `wide` (landscape phone): a wider ~2:1 board so it fills the phone's width,
+  // with large checkers (they overlap when stacked — see STACK_STEP — so a tall
+  // board isn't required) and long points. Desktop keeps the classic ~1.375.
+  const W = wide ? 1640 : 1320;
+  const H = wide ? 820 : 960;
   const FRAME = wide ? 22 : 24;
-  const TRAY_W = wide ? 104 : 90;
-  const BAR_W = wide ? 88 : 84;
+  const TRAY_W = wide ? 100 : 90;
+  const BAR_W = wide ? 86 : 84;
   const COL_W = (W - FRAME * 2 - TRAY_W - BAR_W) / 12;
-  const R = Math.min(COL_W / 2 - 5, 40);
+  const R = Math.min(COL_W / 2 - 6, wide ? 52 : 40);
   // Long points: tips leave only a small central gap (like the reference board).
-  const POINT_H = wide ? 356 : 340;
+  const POINT_H = wide ? 300 : 340;
   const boardLeft = FRAME;
   const barLeft = boardLeft + COL_W * 6;
   const barRight = barLeft + BAR_W;
@@ -146,6 +145,10 @@ export default function Board({
   const uid = useId().replace(/:/g, '');
   const woodFill = `url(#wood-${uid})`;
   const feltFill = `url(#felt-${uid})`;
+  // Vertical step between stacked checkers. Normally a full diameter (just
+  // touching), but tightened so 5 checkers always fit within a half-board —
+  // needed on the wide board where big checkers would otherwise overflow.
+  const STACK_STEP = Math.min(R * 2 - 2, (H / 2 - FRAME - 2 * R - 4) / 4);
   const points = applyHopsToPoints(board.points, pendingHops);
   const pendingOff = pendingHops.filter((h) => h.to === OFF).length;
   const myOff = board.myOff + pendingOff;
@@ -185,13 +188,13 @@ export default function Board({
     const href = mine ? CHECKER_LIGHT : CHECKER_DARK;
     const items = [];
     for (let i = 0; i < shown; i++) {
-      const cy = top ? FRAME + R + 4 + i * (R * 2 - 2) : H - FRAME - R - 4 - i * (R * 2 - 2);
+      const cy = top ? FRAME + R + 4 + i * STACK_STEP : H - FRAME - R - 4 - i * STACK_STEP;
       items.push(
         <image key={`${key}-${i}`} href={href} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />,
       );
     }
     if (n > 5) {
-      const cy = top ? FRAME + R + 4 + 4 * (R * 2 - 2) : H - FRAME - R - 4 - 4 * (R * 2 - 2);
+      const cy = top ? FRAME + R + 4 + 4 * STACK_STEP : H - FRAME - R - 4 - 4 * STACK_STEP;
       items.push(
         <text key={`${key}-n`} x={cx} y={cy + 8} textAnchor="middle" className={mine ? 'count-me' : 'count-opp'}>
           {n}
@@ -206,13 +209,14 @@ export default function Board({
     const items = [];
     const myBar = points[BAR];
     const oppBar = -points[0];
+    const barGap = R + 16;
     for (let i = 0; i < Math.min(myBar, 4); i++) {
-      const cy = H / 2 + 60 + i * (R * 2 - 6);
+      const cy = H / 2 + barGap + i * STACK_STEP;
       items.push(<image key={`mb${i}`} href={CHECKER_LIGHT} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />);
     }
-    if (myBar > 4) items.push(<text key="mbn" x={cx} y={H / 2 + 68} textAnchor="middle" className="count-me">{myBar}</text>);
+    if (myBar > 4) items.push(<text key="mbn" x={cx} y={H / 2 + barGap + 8} textAnchor="middle" className="count-me">{myBar}</text>);
     for (let i = 0; i < Math.min(oppBar, 4); i++) {
-      const cy = H / 2 - 60 - i * (R * 2 - 6);
+      const cy = H / 2 - barGap - i * STACK_STEP;
       items.push(<image key={`ob${i}`} href={CHECKER_DARK} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />);
     }
     if (oppBar > 4) items.push(<text key="obn" x={cx} y={H / 2 - 52} textAnchor="middle" className="count-opp">{oppBar}</text>);
@@ -303,9 +307,9 @@ export default function Board({
     // the bar is empty.
     const myBar = points[BAR];
     const oppBar = -points[0];
-    const step = R * 2 - 6;
-    const oppStackTop = oppBar > 0 ? H / 2 - 60 - (Math.min(oppBar, 4) - 1) * step - R : H / 2;
-    const myStackBottom = myBar > 0 ? H / 2 + 60 + (Math.min(myBar, 4) - 1) * step + R : H / 2;
+    const barGap = R + 16;
+    const oppStackTop = oppBar > 0 ? H / 2 - barGap - (Math.min(oppBar, 4) - 1) * STACK_STEP - R : H / 2;
+    const myStackBottom = myBar > 0 ? H / 2 + barGap + (Math.min(myBar, 4) - 1) * STACK_STEP + R : H / 2;
     const topSpace = oppStackTop - FRAME;
     const bottomSpace = H - FRAME - myStackBottom;
     const topCenter = FRAME + topSpace / 2;
