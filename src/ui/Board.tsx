@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useRef, useLayoutEffect } from 'react';
 import type { BoardState, CheckerHop } from '../engine/types';
 import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
@@ -145,6 +145,8 @@ export default function Board({
   const uid = useId().replace(/:/g, '');
   const woodFill = `url(#wood-${uid})`;
   const feltFill = `url(#felt-${uid})`;
+  const prevCheckersRef = useRef<{ mine: boolean; cx: number; cy: number; key: string }[]>([]);
+  const keyCtrRef = useRef(0);
   // Vertical step between stacked checkers. Normally a full diameter (just
   // touching), but tightened so 5 checkers always fit within a half-board —
   // needed on the wide board where big checkers would otherwise overflow.
@@ -169,7 +171,6 @@ export default function Board({
           fill={fill}
           opacity={0.95}
         />
-        {renderCheckers(p, points[p], top, x)}
         {!mini && (
           <text x={x + COL_W / 2} y={top ? FRAME - 6 : H - FRAME + 16} className="pt-label" textAnchor="middle">
             {p}
@@ -179,57 +180,72 @@ export default function Board({
     );
   };
 
-  const renderCheckers = (key: number, v: number, top: boolean, x: number) => {
-    if (v === 0) return null;
+  // All checkers as a flat list ({mine, cx, cy}) plus overflow-count labels.
+  // Rendered as one keyed, position-matched layer so each checker keeps its
+  // identity across board changes and CSS-slides to its new spot.
+  const rawCheckers: { mine: boolean; cx: number; cy: number }[] = [];
+  const counts: { mine: boolean; cx: number; cy: number; n: number }[] = [];
+  for (let p = 1; p <= 24; p++) {
+    const v = points[p];
+    if (v === 0) continue;
     const n = Math.abs(v);
     const mine = v > 0;
-    const shown = Math.min(n, 5);
-    const cx = x + COL_W / 2;
-    const href = mine ? CHECKER_LIGHT : CHECKER_DARK;
-    const items = [];
-    for (let i = 0; i < shown; i++) {
+    const top = pointIsTop(p);
+    const cx = pointX(g, p) + COL_W / 2;
+    for (let i = 0; i < Math.min(n, 5); i++) {
       const cy = top ? FRAME + R + 4 + i * STACK_STEP : H - FRAME - R - 4 - i * STACK_STEP;
-      items.push(
-        <image key={`${key}-${i}`} href={href} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />,
-      );
+      rawCheckers.push({ mine, cx, cy });
     }
     if (n > 5) {
       const cy = top ? FRAME + R + 4 + 4 * STACK_STEP : H - FRAME - R - 4 - 4 * STACK_STEP;
-      items.push(
-        <text key={`${key}-n`} x={cx} y={cy + 8} textAnchor="middle" className={mine ? 'count-me' : 'count-opp'}>
-          {n}
-        </text>,
-      );
+      counts.push({ mine, cx, cy: cy + 8, n });
     }
-    return items;
-  };
-
-  const renderBar = () => {
+  }
+  {
     const cx = barLeft + BAR_W / 2;
-    const items = [];
+    const barGap = R + 16;
     const myBar = points[BAR];
     const oppBar = -points[0];
-    const barGap = R + 16;
-    for (let i = 0; i < Math.min(myBar, 4); i++) {
-      const cy = H / 2 + barGap + i * STACK_STEP;
-      items.push(<image key={`mb${i}`} href={CHECKER_LIGHT} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />);
-    }
-    if (myBar > 4) items.push(<text key="mbn" x={cx} y={H / 2 + barGap + 8} textAnchor="middle" className="count-me">{myBar}</text>);
-    for (let i = 0; i < Math.min(oppBar, 4); i++) {
-      const cy = H / 2 - barGap - i * STACK_STEP;
-      items.push(<image key={`ob${i}`} href={CHECKER_DARK} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />);
-    }
-    if (oppBar > 4) items.push(<text key="obn" x={cx} y={H / 2 - 52} textAnchor="middle" className="count-opp">{oppBar}</text>);
-    return (
-      <g
-        onClick={() => onPointClick && sources.includes(BAR) && onPointClick(BAR)}
-        style={{ cursor: onPointClick && sources.includes(BAR) ? 'pointer' : 'default' }}
-      >
-        <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill={woodFill} />
-        {items}
-      </g>
-    );
-  };
+    for (let i = 0; i < Math.min(myBar, 4); i++) rawCheckers.push({ mine: true, cx, cy: H / 2 + barGap + i * STACK_STEP });
+    if (myBar > 4) counts.push({ mine: true, cx, cy: H / 2 + barGap + 8, n: myBar });
+    for (let i = 0; i < Math.min(oppBar, 4); i++) rawCheckers.push({ mine: false, cx, cy: H / 2 - barGap - i * STACK_STEP });
+    if (oppBar > 4) counts.push({ mine: false, cx, cy: H / 2 - barGap + 8, n: oppBar });
+  }
+
+  // Match each checker to its nearest previous same-color position (globally,
+  // closest pairs first) so a moved checker carries its key and slides.
+  const prev = prevCheckersRef.current;
+  const pairs: { i: number; j: number; d: number }[] = [];
+  rawCheckers.forEach((c, i) => {
+    prev.forEach((pc, j) => {
+      if (pc.mine !== c.mine) return;
+      pairs.push({ i, j, d: (pc.cx - c.cx) ** 2 + (pc.cy - c.cy) ** 2 });
+    });
+  });
+  pairs.sort((a, b) => a.d - b.d);
+  const keyForNew: (string | undefined)[] = new Array(rawCheckers.length);
+  const usedPrev = new Set<number>();
+  for (const { i, j } of pairs) {
+    if (keyForNew[i] !== undefined || usedPrev.has(j)) continue;
+    keyForNew[i] = prev[j].key;
+    usedPrev.add(j);
+  }
+  const checkers = rawCheckers.map((c, i) => ({
+    ...c,
+    key: keyForNew[i] ?? `ck${keyCtrRef.current++}`,
+  }));
+  useLayoutEffect(() => {
+    prevCheckersRef.current = checkers;
+  });
+
+  const renderBar = () => (
+    <g
+      onClick={() => onPointClick && sources.includes(BAR) && onPointClick(BAR)}
+      style={{ cursor: onPointClick && sources.includes(BAR) ? 'pointer' : 'default' }}
+    >
+      <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill={woodFill} />
+    </g>
+  );
 
   const renderTray = () => {
     const offDest = dests.includes(OFF);
@@ -360,6 +376,16 @@ export default function Board({
       {Array.from({ length: 24 }, (_, i) => renderPoint(i + 1))}
       {renderBar()}
       {renderTray()}
+      {checkers.map((c) => (
+        <g key={c.key} className="checker-slide" transform={`translate(${c.cx}, ${c.cy})`}>
+          <image href={c.mine ? CHECKER_LIGHT : CHECKER_DARK} x={-R} y={-R} width={R * 2} height={R * 2} />
+        </g>
+      ))}
+      {counts.map((ct, i) => (
+        <text key={`cnt${i}`} x={ct.cx} y={ct.cy} textAnchor="middle" className={ct.mine ? 'count-me' : 'count-opp'}>
+          {ct.n}
+        </text>
+      ))}
       {renderDice()}
       {renderCube()}
     </svg>

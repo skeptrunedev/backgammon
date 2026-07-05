@@ -214,6 +214,18 @@
 
 /* Dice ease in on each new roll instead of flashing. Scales from the die's
    own center via fill-box so it doesn't fight the positioning transform. */
+/* Checkers slide to their new position when the board changes, instead of
+   jumping. Each keeps its identity across renders (position-matched keys). */
+.checker-slide {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checker-slide {
+    transition: none;
+  }
+}
+
 .die-in {
   transform-box: fill-box;
   transform-origin: center;
