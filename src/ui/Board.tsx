@@ -13,6 +13,9 @@ const CHECKER_DARK = '/sprites/checker-dark.png';
 // across the whole board in user space — no tiling seams, works for any aspect.
 const WOOD = '/sprites/wood-dark.jpg';
 const FELT = '/sprites/felt.jpg';
+// Blank wooden die faces; pips are drawn as SVG on top so counts are exact.
+const DIE_LIGHT = '/sprites/die-light.png';
+const DIE_DARK = '/sprites/die-dark.png';
 
 /**
  * Board geometry. Two modes:
@@ -307,8 +310,8 @@ export default function Board({
               style={{ cursor: interactive && !dead[di] ? 'pointer' : 'default' }}
             >
               <g key={rollKey} className="die-in">
-                <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
-                {diePips(board.dice[di])}
+                <image href={mine ? DIE_LIGHT : DIE_DARK} x={0} y={0} width={60} height={60} />
+                {diePips(board.dice[di], mine)}
                 {frac > 0 && (
                   <rect
                     width={60}
@@ -407,7 +410,7 @@ export default function Board({
   );
 }
 
-function diePips(v: number) {
+function diePips(v: number, onLightDie: boolean) {
   const pos: Record<number, [number, number][]> = {
     1: [[30, 30]],
     2: [[16, 16], [44, 44]],
@@ -416,5 +419,7 @@ function diePips(v: number) {
     5: [[16, 16], [44, 16], [30, 30], [16, 44], [44, 44]],
     6: [[16, 14], [44, 14], [16, 30], [44, 30], [16, 46], [44, 46]],
   };
-  return (pos[v] ?? []).map(([x, y], i) => <circle key={i} cx={x} cy={y} r={5.5} className="die-pip" />);
+  // Dark pips on the cream die, cream pips on the dark die.
+  const fill = onLightDie ? 'oklch(0.26 0.02 55)' : 'oklch(0.92 0.02 90)';
+  return (pos[v] ?? []).map(([x, y], i) => <circle key={i} cx={x} cy={y} r={5.5} fill={fill} />);
 }
