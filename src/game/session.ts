@@ -381,15 +381,19 @@ export class Session {
           continue;
         }
         quiet = 0;
-        // Replay gnubg's checker hops one at a time with a beat between each;
-        // the last frame uses the engine's authoritative board.
+        // Replay gnubg's checker hops one at a time with a beat between each so
+        // every hop — including the last — slides on its own painted frame. The
+        // final board then lands as a zero-delta correction (same points, but
+        // authoritative dice/turn/off counts): if we jumped straight to it for
+        // the last hop, that move would coalesce with the turn-flip render and
+        // snap into place instead of sliding like the others.
         const moveMatch = /gnubg moves\s+(.+?)\.?\s*$/i.exec(
           collected.find((l) => /gnubg moves/i.test(l)) ?? '',
         );
         if (moveMatch && b.turn === -1) {
           const hops = parseMoveString(moveMatch[1]);
           let working = b.points.slice();
-          for (let k = 0; k < hops.length - 1; k++) {
+          for (let k = 0; k < hops.length; k++) {
             working = applyOppHop(working, hops[k]);
             this.update({ board: { ...b, points: working } });
             await sleep(CHECKER_STEP_MS);
