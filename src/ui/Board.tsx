@@ -3,33 +3,95 @@ import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
 import { dieUsage, deadDice } from '../game/rules';
 
-const W = 1320;
-const H = 960;
-const FRAME = 24;
-const TRAY_W = 90;
-const BAR_W = 84;
-const COL_W = (W - FRAME * 2 - TRAY_W - BAR_W) / 12;
-const R = Math.min(COL_W / 2 - 4, 40);
-const POINT_H = 340;
+/**
+ * Board geometry. Two modes:
+ *  - `default` (1320×960, ratio ≈ 1.375): desktop, portrait, and the analysis
+ *    mini board. Unchanged from the original layout.
+ *  - `wide` (ratio ≈ 2.2): a landscape-phone layout. A shorter, wider board so
+ *    it can fill the full width of a ~2.16:1 phone viewport without vertical
+ *    overflow — and without distorting checkers (they stay circular; the board
+ *    is genuinely re-proportioned, not stretched).
+ *
+ * Every derived value flows from these inputs, so both modes reflow correctly.
+ */
+export interface BoardGeom {
+  W: number;
+  H: number;
+  FRAME: number;
+  TRAY_W: number;
+  BAR_W: number;
+  COL_W: number;
+  R: number;
+  POINT_H: number;
+  boardLeft: number;
+  barLeft: number;
+  barRight: number;
+  trayLeft: number;
+}
 
-const boardLeft = FRAME;
-const barLeft = boardLeft + COL_W * 6;
-const barRight = barLeft + BAR_W;
-const trayLeft = W - FRAME - TRAY_W;
+function geom(wide: boolean): BoardGeom {
+  const W = wide ? 1640 : 1320;
+  const H = wide ? 744 : 960;
+  const FRAME = 24;
+  const TRAY_W = wide ? 96 : 90;
+  const BAR_W = wide ? 90 : 84;
+  const COL_W = (W - FRAME * 2 - TRAY_W - BAR_W) / 12;
+  // Cap the checker radius smaller in wide mode: a shorter board means a
+  // 5-checker stack must fit in less vertical room. 5 stacked checkers span
+  // ~10R, which must stay within a half-board (H/2 − FRAME).
+  const R = Math.min(COL_W / 2 - 4, wide ? 33 : 40);
+  const POINT_H = wide ? 262 : 340;
+  const boardLeft = FRAME;
+  const barLeft = boardLeft + COL_W * 6;
+  const barRight = barLeft + BAR_W;
+  const trayLeft = W - FRAME - TRAY_W;
+  return { W, H, FRAME, TRAY_W, BAR_W, COL_W, R, POINT_H, boardLeft, barLeft, barRight, trayLeft };
+}
 
-/** Board intrinsic dimensions (viewBox units). */
-export const BOARD_W = W;
-export const BOARD_H = H;
-/** Horizontal center of the player's dice cluster, as a % of board width. */
-export const DICE_CENTER_X_PCT = (((barRight + trayLeft) / 2) / W) * 100;
-/** Anchor just below the dice (dice span H/2±30), as a % of board height. */
-export const BELOW_DICE_Y_PCT = ((H / 2 + 50) / H) * 100;
+const DEFAULT_GEOM = geom(false);
+const WIDE_GEOM = geom(true);
 
-function pointX(p: number): number {
-  if (p >= 1 && p <= 6) return barRight + (6 - p) * COL_W;
-  if (p >= 7 && p <= 12) return boardLeft + (12 - p) * COL_W;
-  if (p >= 13 && p <= 18) return boardLeft + (p - 13) * COL_W;
-  return barRight + (p - 19) * COL_W;
+/**
+ * Layout metrics needed by callers positioning HTML overlays in board space.
+ * These are mode-dependent, so PlayScreen must read the metrics for the mode
+ * it is currently rendering.
+ */
+export interface BoardMetrics {
+  /** Board intrinsic dimensions (viewBox units). */
+  w: number;
+  h: number;
+  /** Horizontal center of the player's dice cluster, as a % of board width. */
+  diceCenterXPct: number;
+  /** Anchor just below the dice (dice span H/2±30), as a % of board height. */
+  belowDiceYPct: number;
+}
+
+function metricsOf(g: BoardGeom): BoardMetrics {
+  return {
+    w: g.W,
+    h: g.H,
+    diceCenterXPct: (((g.barRight + g.trayLeft) / 2) / g.W) * 100,
+    belowDiceYPct: ((g.H / 2 + 50) / g.H) * 100,
+  };
+}
+
+/** Metrics for the active board mode (`wide` = landscape-phone layout). */
+export function boardMetrics(wide = false): BoardMetrics {
+  return metricsOf(wide ? WIDE_GEOM : DEFAULT_GEOM);
+}
+
+// Default-mode exports (backwards compatible with the original API).
+const DEFAULT_METRICS = metricsOf(DEFAULT_GEOM);
+export const BOARD_W = DEFAULT_METRICS.w;
+export const BOARD_H = DEFAULT_METRICS.h;
+export const DICE_CENTER_X_PCT = DEFAULT_METRICS.diceCenterXPct;
+export const BELOW_DICE_Y_PCT = DEFAULT_METRICS.belowDiceYPct;
+
+function pointX(g: BoardGeom, p: number): number {
+  if (p >= 1 && p <= 6) return g.barRight + (6 - p) * g.COL_W;
+  if (p >= 7 && p <= 12) return g.boardLeft + (12 - p) * g.COL_W;
+  if (p >= 13 && p <= 18) return g.boardLeft + (p - 13) * g.COL_W;
+  return g.barRight + (p - 19) * g.COL_W;
 }
 
 function pointIsTop(p: number): boolean {
@@ -44,8 +106,10 @@ interface Props {
   onPointClick?: (p: number) => void;
   showDice?: boolean;
   mini?: boolean;
-  /** Fill the parent box exactly (parent is sized to the 1320:960 aspect). */
+  /** Fill the parent box exactly (parent is sized to the board's aspect). */
   fill?: boolean;
+  /** Landscape-phone layout: a shorter, wider board (see `geom`). */
+  wide?: boolean;
   /** Index of the player's die that will be tried first on a click. */
   activeDie?: number;
   onDieClick?: (i: number) => void;
@@ -60,9 +124,12 @@ export default function Board({
   showDice = true,
   mini = false,
   fill = false,
+  wide = false,
   activeDie = 0,
   onDieClick,
 }: Props) {
+  const g = wide ? WIDE_GEOM : DEFAULT_GEOM;
+  const { W, H, FRAME, TRAY_W, BAR_W, COL_W, R, POINT_H, boardLeft, barLeft, barRight, trayLeft } = g;
   const points = applyHopsToPoints(board.points, pendingHops);
   const pendingOff = pendingHops.filter((h) => h.to === OFF).length;
   const myOff = board.myOff + pendingOff;
@@ -71,7 +138,7 @@ export default function Board({
     !!onPointClick && (sources.includes(p) || dests.includes(p));
 
   const renderPoint = (p: number) => {
-    const x = pointX(p);
+    const x = pointX(g, p);
     const top = pointIsTop(p);
     const baseY = top ? FRAME : H - FRAME;
     const tipY = top ? FRAME + POINT_H : H - FRAME - POINT_H;

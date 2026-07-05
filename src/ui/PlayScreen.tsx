@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import Board, { BOARD_W, BOARD_H, DICE_CENTER_X_PCT, BELOW_DICE_Y_PCT } from './Board';
+import Board, { boardMetrics } from './Board';
 import { useSession } from './useSession';
 import { fetchMatch } from '../game/sync';
 import { pipCounts } from '../game/rules';
@@ -72,8 +72,21 @@ export default function PlayScreen() {
     setFirstDie(0);
   }, [rollKey]);
 
+  // Landscape phones (matching the `short-landscape` CSS variant) get the wide
+  // board layout that fills the full viewport width. Desktop/portrait keep the
+  // default 1320×960 board.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(orientation: landscape) and (max-height: 600px)');
+    const apply = () => setWide(mql.matches);
+    apply();
+    mql.addEventListener('change', apply);
+    return () => mql.removeEventListener('change', apply);
+  }, []);
+
   // Measure the board arena so the board box (and its HTML overlay) can be
-  // sized to the exact 1320:960 rectangle contained in it.
+  // sized to the board rectangle it contains.
   const [arena, setArena] = useState<{ w: number; h: number } | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
   const arenaRef = useCallback((el: HTMLDivElement | null) => {
@@ -87,13 +100,19 @@ export default function PlayScreen() {
     observerRef.current = ro;
   }, []);
 
+  const metrics = useMemo(() => boardMetrics(wide), [wide]);
+
   const box = useMemo(() => {
     if (!arena || arena.w <= 0 || arena.h <= 0) return null;
-    const scale = Math.min(arena.w / BOARD_W, arena.h / BOARD_H);
-    const w = BOARD_W * scale;
-    const h = BOARD_H * scale;
+    // Contain (letterbox) to preserve the board aspect and never overflow. In
+    // wide mode the board aspect (~2.2:1) is close to the landscape-phone
+    // viewport, so the letterbox collapses and the board fills nearly the full
+    // width.
+    const scale = Math.min(arena.w / metrics.w, arena.h / metrics.h);
+    const w = metrics.w * scale;
+    const h = metrics.h * scale;
     return { w, h, left: (arena.w - w) / 2, top: (arena.h - h) / 2 };
-  }, [arena]);
+  }, [arena, metrics]);
 
   const undo = useCallback(() => {
     session.undoHops();
@@ -263,6 +282,7 @@ export default function PlayScreen() {
           >
             <Board
               fill
+              wide={wide}
               board={b}
               pendingHops={state.pendingHops}
               sources={state.phase === 'moving' ? sources : []}
@@ -277,7 +297,7 @@ export default function PlayScreen() {
               {playing && (
                 <div
                   className="absolute flex -translate-x-1/2 flex-col items-center gap-1.5"
-                  style={{ left: `${DICE_CENTER_X_PCT}%`, top: `${BELOW_DICE_Y_PCT}%` }}
+                  style={{ left: `${metrics.diceCenterXPct}%`, top: `${metrics.belowDiceYPct}%` }}
                 >
                   <div className="flex items-center gap-2 rounded-lg bg-background/70 p-1.5 backdrop-blur">
                     {state.phase === 'awaitRoll' && (
