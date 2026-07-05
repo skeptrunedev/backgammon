@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { BoardState, CheckerHop } from '../engine/types';
 import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
@@ -7,6 +8,11 @@ import { dieUsage, deadDice } from '../game/rules';
 // <image> at 2R so they stay crisp at any board size / mobile scale.
 const CHECKER_LIGHT = '/sprites/checker-light.png';
 const CHECKER_DARK = '/sprites/checker-dark.png';
+// Surface textures, filled via SVG patterns over the existing board shapes so
+// the responsive geometry (and click zones) are unchanged. One image stretched
+// across the whole board in user space — no tiling seams, works for any aspect.
+const WOOD = '/sprites/wood-dark.jpg';
+const FELT = '/sprites/felt.jpg';
 
 /**
  * Board geometry. Two modes:
@@ -137,6 +143,9 @@ export default function Board({
 }: Props) {
   const g = wide ? WIDE_GEOM : DEFAULT_GEOM;
   const { W, H, FRAME, TRAY_W, BAR_W, COL_W, R, POINT_H, boardLeft, barLeft, barRight, trayLeft } = g;
+  const uid = useId().replace(/:/g, '');
+  const woodFill = `url(#wood-${uid})`;
+  const feltFill = `url(#felt-${uid})`;
   const points = applyHopsToPoints(board.points, pendingHops);
   const pendingOff = pendingHops.filter((h) => h.to === OFF).length;
   const myOff = board.myOff + pendingOff;
@@ -212,7 +221,7 @@ export default function Board({
         onClick={() => onPointClick && sources.includes(BAR) && onPointClick(BAR)}
         style={{ cursor: onPointClick && sources.includes(BAR) ? 'pointer' : 'default' }}
       >
-        <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill="var(--bar)" />
+        <rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill={woodFill} />
         {items}
       </g>
     );
@@ -225,7 +234,7 @@ export default function Board({
         onClick={() => onPointClick && offDest && onPointClick(OFF)}
         style={{ cursor: onPointClick && offDest ? 'pointer' : 'default' }}
       >
-        <rect x={trayLeft} y={FRAME} width={TRAY_W} height={H - FRAME * 2} fill="var(--tray)" />
+        <rect x={trayLeft} y={FRAME} width={TRAY_W} height={H - FRAME * 2} fill={woodFill} />
         {Array.from({ length: Math.min(board.oppOff, 15) }, (_, i) => (
           <rect key={`oo${i}`} x={trayLeft + 12} y={FRAME + 10 + i * 22} width={TRAY_W - 24} height={16} rx={4} className="off-opp" />
         ))}
@@ -333,9 +342,17 @@ export default function Board({
       role="img"
       aria-label="backgammon board"
     >
-      <rect x={0} y={0} width={W} height={H} rx={18} fill="var(--frame)" />
-      <rect x={boardLeft} y={FRAME} width={barLeft - boardLeft} height={H - FRAME * 2} fill="var(--felt)" />
-      <rect x={barRight} y={FRAME} width={trayLeft - barRight} height={H - FRAME * 2} fill="var(--felt)" />
+      <defs>
+        <pattern id={`wood-${uid}`} patternUnits="userSpaceOnUse" width={W} height={H}>
+          <image href={WOOD} x={0} y={0} width={W} height={H} preserveAspectRatio="xMidYMid slice" />
+        </pattern>
+        <pattern id={`felt-${uid}`} patternUnits="userSpaceOnUse" width={W} height={H}>
+          <image href={FELT} x={0} y={0} width={W} height={H} preserveAspectRatio="xMidYMid slice" />
+        </pattern>
+      </defs>
+      <rect x={0} y={0} width={W} height={H} rx={18} fill={woodFill} />
+      <rect x={boardLeft} y={FRAME} width={barLeft - boardLeft} height={H - FRAME * 2} fill={feltFill} />
+      <rect x={barRight} y={FRAME} width={trayLeft - barRight} height={H - FRAME * 2} fill={feltFill} />
       {Array.from({ length: 24 }, (_, i) => renderPoint(i + 1))}
       {renderBar()}
       {renderTray()}
