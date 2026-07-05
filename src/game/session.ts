@@ -276,11 +276,13 @@ export class Session {
         }
         if (b.wasDoubled) {
           this.boardAtDecision = b;
+          // Snapshot the clean position BEFORE any `hint` — running a hint
+          // first corrupts the subsequent `save match` (resume plays the roll).
+          await this.snapshot();
           this.responseHintPromise = this.engine
             .command('hint')
             .then(parseCubeHint)
             .catch(() => null);
-          await this.snapshot();
           this.update({ phase: 'doubleOffered', thinking: false });
           return;
         }
@@ -292,21 +294,21 @@ export class Session {
             continue;
           }
           this.boardAtDecision = b;
+          await this.snapshot();
           this.moveHintPromise = this.engine
             .command('hint 200')
             .then(parseCheckerHints)
             .catch(() => []);
-          await this.snapshot();
           this.update({ phase: 'moving', legal, pendingHops: [], canCommit: false, thinking: false });
           return;
         }
         if (b.turn === 1 && b.dice[0] === 0) {
           const canDouble = b.iMayDouble && !b.crawford && b.cubeValue < 64;
           this.boardAtDecision = b;
+          await this.snapshot();
           this.cubeHintPromise = canDouble
             ? this.engine.command('hint').then(parseCubeHint).catch(() => null)
             : null;
-          await this.snapshot();
           this.update({ phase: 'awaitRoll', canDouble, thinking: false });
           return;
         }
