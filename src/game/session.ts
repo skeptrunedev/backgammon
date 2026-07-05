@@ -36,7 +36,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const AI_STEP_DELAY_MS = 900;
 // Beat between gnubg's individual checker hops so a multi-checker move plays out
 // step by step instead of landing all at once.
-const CHECKER_STEP_MS = 450;
+const CHECKER_STEP_MS = 750;
 
 export class Session {
   private engine: GnubgClient;

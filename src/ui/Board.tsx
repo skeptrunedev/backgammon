@@ -276,15 +276,40 @@ export default function Board({
     // The cube is out of play during the Crawford game.
     if (board.crawford) return null;
     const centered = board.iMayDouble && board.oppMayDouble;
-    // The cube lives on the bar (the central rail): resting in the middle when
-    // neither owns it, sliding to the owner's end once it's held (me = bottom,
-    // opponent = top).
-    const x = barLeft + BAR_W / 2 - 32;
-    const y = centered ? H / 2 - 32 : board.iMayDouble ? H - FRAME - 72 : FRAME + 8;
+    const CUBE = 64;
+    // The cube lives on the bar, but must never overlap checkers there. Compute
+    // the clear space above the opponent's bar stack and below mine, and place
+    // the cube in whichever clear zone suits its owner (me = bottom, opp = top),
+    // falling back to the roomier zone. Centered rests in the middle only when
+    // the bar is empty.
+    const myBar = points[BAR];
+    const oppBar = -points[0];
+    const step = R * 2 - 6;
+    const oppStackTop = oppBar > 0 ? H / 2 - 60 - (Math.min(oppBar, 4) - 1) * step - R : H / 2;
+    const myStackBottom = myBar > 0 ? H / 2 + 60 + (Math.min(myBar, 4) - 1) * step + R : H / 2;
+    const topSpace = oppStackTop - FRAME;
+    const bottomSpace = H - FRAME - myStackBottom;
+    const topCenter = FRAME + topSpace / 2;
+    const bottomCenter = H - FRAME - bottomSpace / 2;
+    const fits = (space: number) => space >= CUBE + 8;
+    let cy: number;
+    if (centered) {
+      // At rest: the middle when the bar is empty, else the roomier clear zone.
+      cy = myBar === 0 && oppBar === 0 ? H / 2 : topSpace >= bottomSpace ? topCenter : bottomCenter;
+    } else if (board.iMayDouble) {
+      // I own it → my side (bottom), unless my bar stack crowds it out.
+      cy = fits(bottomSpace) ? bottomCenter : topCenter;
+    } else {
+      // gnubg owns it → its side (top), unless its bar stack crowds it out.
+      cy = fits(topSpace) ? topCenter : bottomCenter;
+    }
+    cy = Math.max(FRAME + CUBE / 2, Math.min(H - FRAME - CUBE / 2, cy));
+    const x = barLeft + BAR_W / 2 - CUBE / 2;
+    const y = cy - CUBE / 2;
     return (
       <g transform={`translate(${x}, ${y})`}>
-        <rect width={64} height={64} rx={10} className="cube" />
-        <text x={32} y={42} textAnchor="middle" className="cube-text">
+        <rect width={CUBE} height={CUBE} rx={10} className="cube" />
+        <text x={CUBE / 2} y={CUBE / 2 + 10} textAnchor="middle" className="cube-text">
           {board.cubeValue === 1 ? 64 : board.cubeValue}
         </text>
       </g>
