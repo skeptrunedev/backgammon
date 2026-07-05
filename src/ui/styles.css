@@ -218,6 +218,7 @@
    jumping. Each keeps its identity across renders (position-matched keys). */
 .checker-slide {
   transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none; /* taps fall through to the point hit-target below */
 }
 
 @media (prefers-reduced-motion: reduce) {

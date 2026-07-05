@@ -165,7 +165,7 @@ export default function Board({
     const tipY = top ? FRAME + POINT_H : H - FRAME - POINT_H;
     const fill = p % 2 === 0 ? 'var(--pt-a)' : 'var(--pt-b)';
     return (
-      <g key={p} onClick={() => clickable(p) && onPointClick!(p)} style={{ cursor: clickable(p) ? 'pointer' : 'default' }}>
+      <g key={p}>
         <polygon
           points={`${x + 2},${baseY} ${x + COL_W - 2},${baseY} ${x + COL_W / 2},${tipY}`}
           fill={fill}
@@ -175,6 +175,21 @@ export default function Board({
           <text x={x + COL_W / 2} y={top ? FRAME - 6 : H - FRAME + 16} className="pt-label" textAnchor="middle">
             {p}
           </text>
+        )}
+        {/* Full-column hit target: the checker layer above is pointer-events:none,
+            so taps on a checker fall through to here. Covers the whole stack, not
+            just the triangle. */}
+        {onPointClick && (
+          <rect
+            x={x}
+            y={top ? FRAME : H / 2}
+            width={COL_W}
+            height={H / 2 - FRAME}
+            fill="transparent"
+            pointerEvents="all"
+            onClick={() => clickable(p) && onPointClick(p)}
+            style={{ cursor: clickable(p) ? 'pointer' : 'default' }}
+          />
         )}
       </g>
     );
@@ -382,7 +397,7 @@ export default function Board({
         </g>
       ))}
       {counts.map((ct, i) => (
-        <text key={`cnt${i}`} x={ct.cx} y={ct.cy} textAnchor="middle" className={ct.mine ? 'count-me' : 'count-opp'}>
+        <text key={`cnt${i}`} x={ct.cx} y={ct.cy} textAnchor="middle" pointerEvents="none" className={ct.mine ? 'count-me' : 'count-opp'}>
           {ct.n}
         </text>
       ))}
