@@ -20,7 +20,7 @@ import { ChevronLeft } from 'lucide-react';
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="pointer-events-none ml-1.5 rounded border border-current/25 px-1 font-sans text-[10px] font-medium leading-4 opacity-70">
+    <kbd className="pointer-events-none ml-1.5 hidden rounded border border-current/25 px-1 font-sans text-[10px] font-medium leading-4 opacity-70 short-landscape:hidden sm:inline-block">
       {children}
     </kbd>
   );
@@ -340,9 +340,7 @@ export default function PlayScreen() {
                           disabled={state.pendingHops.length === 0 || state.thinking}
                         >
                           Undo
-                          <span className="short-landscape:hidden">
-                            <Kbd>⌃Z</Kbd>
-                          </span>
+                          <Kbd>⌃Z</Kbd>
                         </Button>
                         <Button
                           className="pointer-events-auto short-landscape:h-7 short-landscape:gap-1 short-landscape:px-2.5 short-landscape:text-xs"
@@ -350,9 +348,7 @@ export default function PlayScreen() {
                           disabled={!state.canCommit || state.thinking}
                         >
                           Confirm
-                          <span className="short-landscape:hidden">
-                            <Kbd>⏎</Kbd>
-                          </span>
+                          <Kbd>⏎</Kbd>
                         </Button>
                       </>
                     )}
