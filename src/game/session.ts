@@ -99,7 +99,13 @@ export class Session {
         this.gameNo += 1;
         void this.persist();
       }
-      this.update({ board: ev.state });
+      // A fresh board from the engine supersedes any pending-move preview.
+      // Clear the preview atomically with the new board so the move animates
+      // straight to its result — never flashing back to the pre-move position.
+      // (Never while 'moving': that's the human's own in-progress preview.)
+      const clearPreview =
+        this.state.phase !== 'moving' && this.state.pendingHops.length > 0;
+      this.update(clearPreview ? { board: ev.state, pendingHops: [] } : { board: ev.state });
     } else if (ev.type === 'resignOffer') {
       this.resignOffered = ev.value;
     } else if (ev.type === 'line') {
@@ -429,7 +435,9 @@ export class Session {
     const b = this.boardAtDecision;
     const hops = this.state.pendingHops;
     if (!b || !isComplete(this.state.legal, hops)) return;
-    this.update({ thinking: true, phase: 'aiTurn', pendingHops: [], legal: [] });
+    // Keep the pending-move preview on the board; it's cleared when the engine
+    // emits the post-move board (see onEngineEvent), avoiding a pre-move flash.
+    this.update({ thinking: true, phase: 'aiTurn', legal: [] });
     const hints = this.moveHintPromise ? await this.moveHintPromise : [];
     const playedHint =
       hints.find((h) =>
