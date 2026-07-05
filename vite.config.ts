@@ -22,7 +22,7 @@ export default defineConfig({
       includeAssets: ['engine/gnubg.js', 'engine/gnubg.wasm', 'engine/gnubg.data', 'icons/icon.svg'],
       workbox: {
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,svg,wasm,data}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,wasm,data}'],
         // SPA deep links (e.g. /play/:id) resolve to the app shell offline,
         // but never hijack the API.
         navigateFallback: '/index.html',

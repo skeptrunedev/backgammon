@@ -3,6 +3,11 @@ import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
 import { dieUsage, deadDice } from '../game/rules';
 
+// Checker sprites (top-down glossy wooden discs, transparent bg). Drawn as
+// <image> at 2R so they stay crisp at any board size / mobile scale.
+const CHECKER_LIGHT = '/sprites/checker-light.png';
+const CHECKER_DARK = '/sprites/checker-dark.png';
+
 /**
  * Board geometry. Two modes:
  *  - `default` (1320×960, ratio ≈ 1.375): desktop, portrait, and the analysis
@@ -168,11 +173,12 @@ export default function Board({
     const mine = v > 0;
     const shown = Math.min(n, 5);
     const cx = x + COL_W / 2;
+    const href = mine ? CHECKER_LIGHT : CHECKER_DARK;
     const items = [];
     for (let i = 0; i < shown; i++) {
       const cy = top ? FRAME + R + 4 + i * (R * 2 - 2) : H - FRAME - R - 4 - i * (R * 2 - 2);
       items.push(
-        <circle key={`${key}-${i}`} cx={cx} cy={cy} r={R} className={mine ? 'checker-me' : 'checker-opp'} />,
+        <image key={`${key}-${i}`} href={href} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />,
       );
     }
     if (n > 5) {
@@ -192,11 +198,13 @@ export default function Board({
     const myBar = points[BAR];
     const oppBar = -points[0];
     for (let i = 0; i < Math.min(myBar, 4); i++) {
-      items.push(<circle key={`mb${i}`} cx={cx} cy={H / 2 + 60 + i * (R * 2 - 6)} r={R} className="checker-me" />);
+      const cy = H / 2 + 60 + i * (R * 2 - 6);
+      items.push(<image key={`mb${i}`} href={CHECKER_LIGHT} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />);
     }
     if (myBar > 4) items.push(<text key="mbn" x={cx} y={H / 2 + 68} textAnchor="middle" className="count-me">{myBar}</text>);
     for (let i = 0; i < Math.min(oppBar, 4); i++) {
-      items.push(<circle key={`ob${i}`} cx={cx} cy={H / 2 - 60 - i * (R * 2 - 6)} r={R} className="checker-opp" />);
+      const cy = H / 2 - 60 - i * (R * 2 - 6);
+      items.push(<image key={`ob${i}`} href={CHECKER_DARK} x={cx - R} y={cy - R} width={R * 2} height={R * 2} />);
     }
     if (oppBar > 4) items.push(<text key="obn" x={cx} y={H / 2 - 52} textAnchor="middle" className="count-opp">{oppBar}</text>);
     return (
