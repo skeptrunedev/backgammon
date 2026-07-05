@@ -237,6 +237,9 @@ export default function Board({
     // Render the leading die in the left slot so clicking to reorder visibly
     // swaps the dice horizontally — no separate highlight needed.
     const order = mine && activeDie === 1 ? [1, 0] : [0, 1];
+    // Re-key by the roll so the appear animation replays on every new roll,
+    // but not when only the used-overlay changes (playing a checker).
+    const rollKey = `${board.turn}-${board.dice[0]}-${board.dice[1]}`;
     return (
       <g>
         {order.map((di, slot) => {
@@ -249,17 +252,19 @@ export default function Board({
               onClick={() => interactive && !dead[di] && onDieClick!(di)}
               style={{ cursor: interactive && !dead[di] ? 'pointer' : 'default' }}
             >
-              <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
-              {diePips(board.dice[di])}
-              {frac > 0 && (
-                <rect
-                  width={60}
-                  height={60 * frac}
-                  y={60 - 60 * frac}
-                  rx={12}
-                  className="die-used"
-                />
-              )}
+              <g key={rollKey} className="die-in">
+                <rect width={60} height={60} rx={12} className={mine ? 'die-me' : 'die-opp'} />
+                {diePips(board.dice[di])}
+                {frac > 0 && (
+                  <rect
+                    width={60}
+                    height={60 * frac}
+                    y={60 - 60 * frac}
+                    rx={12}
+                    className="die-used"
+                  />
+                )}
+              </g>
             </g>
           );
         })}
