@@ -3,20 +3,30 @@ import type { BoardState } from '../engine/types';
 import { pipCounts } from '../game/rules';
 
 export interface AiSettings {
-  apiKey: string;
+  hasKey: boolean;
   model: string;
 }
 
-export function loadAiSettings(): AiSettings {
-  return {
-    apiKey: localStorage.getItem('anthropic-api-key') ?? '',
-    model: localStorage.getItem('anthropic-model') ?? 'claude-sonnet-5',
-  };
+// Settings live server-side per account: the Anthropic key is encrypted at rest
+// and never sent back to the browser. GET reports only whether a key is set.
+export async function loadAiSettings(): Promise<AiSettings> {
+  const res = await fetch('/api/settings', { credentials: 'include' });
+  if (res.status === 401) return { hasKey: false, model: 'claude-sonnet-5' };
+  if (!res.ok) throw new Error('Failed to load settings');
+  return res.json();
 }
 
-export function saveAiSettings(s: AiSettings) {
-  localStorage.setItem('anthropic-api-key', s.apiKey);
-  localStorage.setItem('anthropic-model', s.model);
+// apiKey undefined → keep the existing key (model-only save). '' → clear it.
+export async function saveAiSettings(s: { apiKey?: string; model: string }): Promise<AiSettings> {
+  const res = await fetch('/api/settings', {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(s),
+  });
+  if (res.status === 401) throw new Error('Sign in to save your Anthropic key.');
+  if (!res.ok) throw new Error('Failed to save settings');
+  return res.json();
 }
 
 function describeBoard(b: BoardState): string {
@@ -90,34 +100,20 @@ export function buildPrompt(d: Decision): string {
 }
 
 export async function explainDecision(d: Decision): Promise<string> {
-  const { apiKey, model } = loadAiSettings();
-  if (!apiKey) {
-    throw new Error('Set your Anthropic API key in Settings first.');
-  }
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  // The worker holds the (encrypted) key and calls Anthropic; we only send the
+  // assembled prompt, so the key never touches the browser.
+  const res = await fetch('/api/explain', {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      system:
-        'You are a world-class backgammon coach. You explain engine evaluations in clear, instructive language for an improving player.',
-      messages: [{ role: 'user', content: buildPrompt(d) }],
-    }),
+    credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ prompt: buildPrompt(d) }),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Anthropic API error ${res.status}: ${body.slice(0, 300)}`);
+  if (res.status === 401) {
+    throw new Error('Sign in and set your Anthropic key in Settings to use AI explanations.');
   }
-  const data = await res.json();
-  const text = (data.content ?? [])
-    .filter((b: { type: string }) => b.type === 'text')
-    .map((b: { text: string }) => b.text)
-    .join('\n');
-  return text || 'No explanation returned.';
+  const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+  if (!res.ok) {
+    throw new Error(data.error || `Explain failed (${res.status})`);
+  }
+  return data.text || 'No explanation returned.';
 }

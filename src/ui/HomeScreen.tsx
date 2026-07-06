@@ -292,19 +292,39 @@ function MatchRow({ rec, onDelete }: { rec: MatchRecord; onDelete: () => void })
 function SettingsDialog() {
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('');
+  const [model, setModel] = useState('claude-sonnet-5');
+  const [hasKey, setHasKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (open) {
-      const s = loadAiSettings();
-      setApiKey(s.apiKey);
-      setModel(s.model);
-    }
+    if (!open) return;
+    setApiKey('');
+    setError('');
+    loadAiSettings()
+      .then((s) => {
+        setHasKey(s.hasKey);
+        setModel(s.model);
+      })
+      .catch(() => setError('Could not load settings — are you signed in?'));
   }, [open]);
 
-  const save = () => {
-    saveAiSettings({ apiKey: apiKey.trim(), model: model.trim() });
-    setOpen(false);
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      // Send apiKey only when the user typed one, so an empty field keeps the
+      // existing (encrypted) key rather than clearing it.
+      const s = await saveAiSettings(
+        apiKey.trim() ? { apiKey: apiKey.trim(), model: model.trim() } : { model: model.trim() },
+      );
+      setHasKey(s.hasKey);
+      setOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -328,28 +348,28 @@ function SettingsDialog() {
               id="anthropic-key"
               type="password"
               autoComplete="off"
-              placeholder="sk-ant-…"
+              placeholder={hasKey ? '•••••••• (key saved — leave blank to keep)' : 'sk-ant-…'}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Stored only in this browser's localStorage.
+              Stored encrypted on the server against your account; never saved in plain text and
+              never sent back to the browser.
             </p>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="anthropic-model">Model</Label>
-            <Input
-              id="anthropic-model"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            />
+            <Input id="anthropic-model" value={model} onChange={(e) => setModel(e.target.value)} />
           </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={save}>Save</Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
