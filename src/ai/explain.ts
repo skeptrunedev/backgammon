@@ -11,7 +11,7 @@ export interface AiSettings {
 // and never sent back to the browser. GET reports only whether a key is set.
 export async function loadAiSettings(): Promise<AiSettings> {
   const res = await fetch('/api/settings', { credentials: 'include' });
-  if (res.status === 401) return { hasKey: false, model: 'claude-sonnet-5' };
+  if (res.status === 401) return { hasKey: false, model: 'claude-opus-4-8' };
   if (!res.ok) throw new Error('Failed to load settings');
   return res.json();
 }

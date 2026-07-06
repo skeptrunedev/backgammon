@@ -191,7 +191,7 @@ app.get('/api/settings', async (c) => {
   )
     .bind(user.id)
     .first<Pick<SettingsRow, 'model' | 'key_ciphertext'>>();
-  return c.json({ hasKey: !!row?.key_ciphertext, model: row?.model ?? 'claude-sonnet-5' });
+  return c.json({ hasKey: !!row?.key_ciphertext, model: row?.model ?? 'claude-opus-4-8' });
 });
 
 app.put('/api/settings', async (c) => {
@@ -204,7 +204,7 @@ app.put('/api/settings', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400);
   }
   const model =
-    typeof body.model === 'string' && body.model.trim() ? body.model.trim() : 'claude-sonnet-5';
+    typeof body.model === 'string' && body.model.trim() ? body.model.trim() : 'claude-opus-4-8';
 
   const existing = await c.env.DB.prepare(
     'SELECT key_ciphertext, key_iv FROM user_settings WHERE user_id = ?1',
@@ -270,7 +270,7 @@ app.post('/api/explain', async (c) => {
   }
   const apiKey = await decryptSecret(c.env, row.key_ciphertext, row.key_iv);
   const model =
-    (typeof body.model === 'string' && body.model.trim()) || row.model || 'claude-sonnet-5';
+    (typeof body.model === 'string' && body.model.trim()) || row.model || 'claude-opus-4-8';
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',

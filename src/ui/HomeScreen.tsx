@@ -292,7 +292,7 @@ function MatchRow({ rec, onDelete }: { rec: MatchRecord; onDelete: () => void })
 function SettingsDialog() {
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('claude-sonnet-5');
+  const [model, setModel] = useState('claude-opus-4-8');
   const [hasKey, setHasKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

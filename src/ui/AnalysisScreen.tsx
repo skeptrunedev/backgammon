@@ -20,6 +20,26 @@ import {
 } from '../game/records';
 import { explainDecision } from '../ai/explain';
 import { downloadText, matFilename } from './download';
+import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
+
+// Tailwind-styled elements for the AI analysis markdown (avoids the typography
+// plugin). Preflight strips default margins, so spacing is set explicitly.
+const mdComponents: Components = {
+  p: (props) => <p className="mb-2 last:mb-0" {...props} />,
+  ul: (props) => <ul className="mb-2 list-disc pl-5 last:mb-0" {...props} />,
+  ol: (props) => <ol className="mb-2 list-decimal pl-5 last:mb-0" {...props} />,
+  li: (props) => <li className="mb-1 last:mb-0" {...props} />,
+  strong: (props) => <strong className="font-semibold text-foreground" {...props} />,
+  em: (props) => <em className="italic" {...props} />,
+  h1: (props) => <h3 className="mb-1 mt-2 font-semibold text-foreground first:mt-0" {...props} />,
+  h2: (props) => <h3 className="mb-1 mt-2 font-semibold text-foreground first:mt-0" {...props} />,
+  h3: (props) => <h3 className="mb-1 mt-2 font-semibold text-foreground first:mt-0" {...props} />,
+  code: (props) => (
+    <code className="rounded bg-black/30 px-1 py-0.5 font-mono text-[0.85em]" {...props} />
+  ),
+  a: (props) => <a className="text-primary underline" {...props} />,
+};
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -388,8 +408,8 @@ function ExplainSection({
     <div className="flex flex-col gap-2">
       <Separator />
       {d.explanation && (
-        <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">
-          {d.explanation}
+        <div className="max-h-72 overflow-y-auto overscroll-contain rounded-lg bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground/90">
+          <ReactMarkdown components={mdComponents}>{d.explanation}</ReactMarkdown>
         </div>
       )}
       <div>
