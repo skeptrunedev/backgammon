@@ -148,7 +148,7 @@ export default function Board({
   const uid = useId().replace(/:/g, '');
   const woodFill = `url(#wood-${uid})`;
   const feltFill = `url(#felt-${uid})`;
-  const prevCheckersRef = useRef<{ mine: boolean; cx: number; cy: number; key: string }[]>([]);
+  const prevCheckersRef = useRef<{ mine: boolean; cx: number; cy: number; off?: boolean; key: string }[]>([]);
   const keyCtrRef = useRef(0);
   // Vertical step between stacked checkers. Normally a full diameter (just
   // touching), but tightened so 5 checkers always fit within a half-board —
@@ -157,6 +157,14 @@ export default function Board({
   const points = applyHopsToPoints(board.points, pendingHops);
   const pendingOff = pendingHops.filter((h) => h.to === OFF).length;
   const myOff = board.myOff + pendingOff;
+
+  // Bear-off tray ("pocket") geometry. Borne-off checkers rest here as stacked
+  // edges, seen side-on. Sized so a full 15-stack fits within each half-tray.
+  const CAP_W = TRAY_W - 22;
+  const CAP_H = wide ? 22 : 20;
+  const OFF_RIM = 14;
+  const OFF_STEP = Math.min(CAP_H + 2, (H / 2 - FRAME - OFF_RIM - CAP_H) / 14);
+  const trayCX = trayLeft + TRAY_W / 2;
 
   const clickable = (p: number) =>
     !!onPointClick && (sources.includes(p) || dests.includes(p));
@@ -201,7 +209,7 @@ export default function Board({
   // All checkers as a flat list ({mine, cx, cy}) plus overflow-count labels.
   // Rendered as one keyed, position-matched layer so each checker keeps its
   // identity across board changes and CSS-slides to its new spot.
-  const rawCheckers: { mine: boolean; cx: number; cy: number }[] = [];
+  const rawCheckers: { mine: boolean; cx: number; cy: number; off?: boolean }[] = [];
   const counts: { mine: boolean; cx: number; cy: number; n: number }[] = [];
   for (let p = 1; p <= 24; p++) {
     const v = points[p];
@@ -228,6 +236,17 @@ export default function Board({
     if (myBar > 4) counts.push({ mine: true, cx, cy: H / 2 + barGap + 8, n: myBar });
     for (let i = 0; i < Math.min(oppBar, 4); i++) rawCheckers.push({ mine: false, cx, cy: H / 2 - barGap - i * STACK_STEP });
     if (oppBar > 4) counts.push({ mine: false, cx, cy: H / 2 - barGap + 8, n: oppBar });
+  }
+  {
+    // Borne-off checkers join the sliding layer so each animates from its point
+    // into the pocket, then rests as a stacked edge. gnubg (opponent) stacks
+    // from the top of the tray; the human's stack grows up from the bottom.
+    const oppOff = Math.min(board.oppOff, 15);
+    for (let i = 0; i < oppOff; i++)
+      rawCheckers.push({ mine: false, off: true, cx: trayCX, cy: FRAME + OFF_RIM + CAP_H / 2 + i * OFF_STEP });
+    const meOff = Math.min(myOff, 15);
+    for (let i = 0; i < meOff; i++)
+      rawCheckers.push({ mine: true, off: true, cx: trayCX, cy: H - FRAME - OFF_RIM - CAP_H / 2 - i * OFF_STEP });
   }
 
   // Match each checker to its nearest previous same-color position (globally,
@@ -280,12 +299,41 @@ export default function Board({
         style={{ cursor: onPointClick && offDest ? 'pointer' : 'default' }}
       >
         <rect x={trayLeft} y={FRAME} width={TRAY_W} height={H - FRAME * 2} fill={woodFill} />
-        {Array.from({ length: Math.min(board.oppOff, 15) }, (_, i) => (
-          <rect key={`oo${i}`} x={trayLeft + 12} y={FRAME + 10 + i * 22} width={TRAY_W - 24} height={16} rx={4} className="off-opp" />
-        ))}
-        {Array.from({ length: Math.min(myOff, 15) }, (_, i) => (
-          <rect key={`mo${i}`} x={trayLeft + 12} y={H - FRAME - 26 - i * 22} width={TRAY_W - 24} height={16} rx={4} className="off-me" />
-        ))}
+        {/* Recessed pocket: a sunken well with an inner shadow and a lit lower
+            lip so borne-off checkers read as sitting down inside it. */}
+        <rect
+          x={trayLeft + 6}
+          y={FRAME + 6}
+          width={TRAY_W - 12}
+          height={H - FRAME * 2 - 12}
+          rx={12}
+          fill={`url(#well-${uid})`}
+          filter={`url(#inset-${uid})`}
+          stroke="oklch(0 0 0 / 45%)"
+          strokeWidth={1.5}
+        />
+        {/* Bottom lip highlight — catches light along the near edge of the recess. */}
+        <rect
+          x={trayLeft + 8}
+          y={H - FRAME - 9}
+          width={TRAY_W - 16}
+          height={2.5}
+          rx={1.25}
+          fill="oklch(1 0 0 / 10%)"
+        />
+        {offDest && (
+          <rect
+            x={trayLeft + 4}
+            y={FRAME + 4}
+            width={TRAY_W - 8}
+            height={H - FRAME * 2 - 8}
+            rx={13}
+            fill="none"
+            stroke="var(--hl-dest)"
+            strokeWidth={4}
+            opacity={0.9}
+          />
+        )}
       </g>
     );
   };
@@ -394,6 +442,31 @@ export default function Board({
         <pattern id={`felt-${uid}`} patternUnits="userSpaceOnUse" width={W} height={H}>
           <image href={FELT} x={0} y={0} width={W} height={H} preserveAspectRatio="xMidYMid slice" />
         </pattern>
+        {/* Inner shadow for the sunken bear-off pocket. */}
+        <filter id={`inset-${uid}`} x="-20%" y="-20%" width="140%" height="140%">
+          <feOffset dx="0" dy="5" />
+          <feGaussianBlur stdDeviation="6" result="blur" />
+          <feComposite operator="out" in="SourceGraphic" in2="blur" result="inverse" />
+          <feFlood floodColor="black" floodOpacity="0.6" />
+          <feComposite operator="in" in2="inverse" result="shadow" />
+          <feComposite operator="over" in="shadow" in2="SourceGraphic" />
+        </filter>
+        {/* Well interior: darker at the shadowed top, lighter toward the lip. */}
+        <linearGradient id={`well-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="oklch(0.185 0.028 55)" />
+          <stop offset="1" stopColor="oklch(0.255 0.032 55)" />
+        </linearGradient>
+        {/* Edge-on checker cylinders: top-lit → shadowed bottom for roundness. */}
+        <linearGradient id={`cap-me-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="oklch(0.97 0.02 92)" />
+          <stop offset="0.5" stopColor="oklch(0.9 0.025 88)" />
+          <stop offset="1" stopColor="oklch(0.76 0.03 78)" />
+        </linearGradient>
+        <linearGradient id={`cap-opp-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="oklch(0.36 0.018 55)" />
+          <stop offset="0.5" stopColor="oklch(0.26 0.014 55)" />
+          <stop offset="1" stopColor="oklch(0.14 0.01 55)" />
+        </linearGradient>
       </defs>
       <rect x={0} y={0} width={W} height={H} rx={18} fill={woodFill} />
       <rect x={boardLeft} y={FRAME} width={barLeft - boardLeft} height={H - FRAME * 2} fill={feltFill} />
@@ -401,11 +474,40 @@ export default function Board({
       {Array.from({ length: 24 }, (_, i) => renderPoint(i + 1))}
       {renderBar()}
       {renderTray()}
-      {orderedCheckers.map((c) => (
-        <g key={c.key} className="checker-slide" transform={`translate(${c.cx}, ${c.cy})`}>
-          <image href={c.mine ? CHECKER_LIGHT : CHECKER_DARK} x={-R} y={-R} width={R * 2} height={R * 2} />
-        </g>
-      ))}
+      {orderedCheckers.map((c) =>
+        c.off ? (
+          <g
+            key={c.key}
+            className="checker-slide"
+            transform={`translate(${c.cx}, ${c.cy})`}
+            style={{ filter: 'drop-shadow(0 2px 2px oklch(0 0 0 / 0.55))' }}
+          >
+            <rect
+              x={-CAP_W / 2}
+              y={-CAP_H / 2}
+              width={CAP_W}
+              height={CAP_H}
+              rx={CAP_H / 2}
+              fill={`url(#${c.mine ? 'cap-me' : 'cap-opp'}-${uid})`}
+              stroke={c.mine ? 'oklch(0.6 0.03 75 / 55%)' : 'oklch(0 0 0 / 50%)'}
+              strokeWidth={1}
+            />
+            {/* Thin top-edge highlight to sell the rounded cylinder. */}
+            <rect
+              x={-CAP_W / 2 + 4}
+              y={-CAP_H / 2 + 2.5}
+              width={CAP_W - 8}
+              height={2.5}
+              rx={1.25}
+              fill="oklch(1 0 0 / 35%)"
+            />
+          </g>
+        ) : (
+          <g key={c.key} className="checker-slide" transform={`translate(${c.cx}, ${c.cy})`}>
+            <image href={c.mine ? CHECKER_LIGHT : CHECKER_DARK} x={-R} y={-R} width={R * 2} height={R * 2} />
+          </g>
+        ),
+      )}
       {counts.map((ct, i) => (
         <text key={`cnt${i}`} x={ct.cx} y={ct.cy} textAnchor="middle" pointerEvents="none" className={ct.mine ? 'count-me' : 'count-opp'}>
           {ct.n}
