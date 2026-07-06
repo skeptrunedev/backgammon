@@ -255,6 +255,13 @@ export default function Board({
   useLayoutEffect(() => {
     prevCheckersRef.current = checkers;
   });
+  // Render in a STABLE order by key (not board-point order). If the list were
+  // ordered by position, a checker that moves would be re-inserted elsewhere in
+  // the SVG child list; re-inserting a node during the same commit that changes
+  // its transform drops the CSS-transition baseline, so it snaps to the new
+  // spot instead of sliding. Keeping each key in a fixed slot means React only
+  // patches the transform attribute in place, so the transition always plays.
+  const orderedCheckers = [...checkers].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
   const renderBar = () => (
     <g
@@ -394,7 +401,7 @@ export default function Board({
       {Array.from({ length: 24 }, (_, i) => renderPoint(i + 1))}
       {renderBar()}
       {renderTray()}
-      {checkers.map((c) => (
+      {orderedCheckers.map((c) => (
         <g key={c.key} className="checker-slide" transform={`translate(${c.cx}, ${c.cy})`}>
           <image href={c.mine ? CHECKER_LIGHT : CHECKER_DARK} x={-R} y={-R} width={R * 2} height={R * 2} />
         </g>
