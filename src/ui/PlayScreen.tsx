@@ -78,11 +78,18 @@ export default function PlayScreen() {
   const [wide, setWide] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mql = window.matchMedia('(orientation: landscape) and (max-height: 600px)');
-    const apply = () => setWide(mql.matches);
+    // Wide board for short landscape phones, and for portrait phones (which the
+    // app rotates 90° into landscape — the rotated view is landscape-and-short).
+    const shortLandscape = window.matchMedia('(orientation: landscape) and (max-height: 600px)');
+    const portraitPhone = window.matchMedia('(orientation: portrait) and (max-width: 820px)');
+    const apply = () => setWide(shortLandscape.matches || portraitPhone.matches);
     apply();
-    mql.addEventListener('change', apply);
-    return () => mql.removeEventListener('change', apply);
+    shortLandscape.addEventListener('change', apply);
+    portraitPhone.addEventListener('change', apply);
+    return () => {
+      shortLandscape.removeEventListener('change', apply);
+      portraitPhone.removeEventListener('change', apply);
+    };
   }, []);
 
   // Measure the board arena so the board box (and its HTML overlay) can be

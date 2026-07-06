@@ -128,6 +128,25 @@
     }
 }
 
+/* Force-landscape: on a portrait phone we rotate the entire app 90° so it always
+   presents in landscape (browsers won't let us lock orientation in a plain tab).
+   The container takes the swapped viewport dimensions and its child fills it. */
+.force-landscape {
+  position: fixed;
+  top: 0;
+  left: 100dvw;
+  width: 100dvh;
+  height: 100dvw;
+  transform: rotate(90deg);
+  transform-origin: top left;
+  overflow: hidden;
+}
+.force-landscape > * {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
 /* ---------- SVG board ---------- */
 
 .board {

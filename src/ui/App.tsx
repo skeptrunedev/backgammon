@@ -8,6 +8,7 @@ import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
 import { Separator } from '@/components/ui/separator';
 import { Menu, X, Home, LogIn, LogOut } from 'lucide-react';
+import { useForcedLandscape } from './useForcedLandscape';
 
 export default function App() {
   return (
@@ -20,21 +21,18 @@ export default function App() {
 function Chrome() {
   const { pathname } = useLocation();
   const fullscreen = pathname.startsWith('/play');
+  const forcedLandscape = useForcedLandscape();
 
-  if (fullscreen) {
-    return (
-      <div className="flex h-dvh flex-col overflow-hidden">
-        <SessionPuller />
-        <Routes>
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/play/:matchId" element={<PlayScreen />} />
-          <Route path="/match/:id" element={<AnalysisScreen />} />
-        </Routes>
-      </div>
-    );
-  }
-
-  return (
+  const inner = fullscreen ? (
+    <div className="flex h-dvh flex-col overflow-hidden">
+      <SessionPuller />
+      <Routes>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/play/:matchId" element={<PlayScreen />} />
+        <Route path="/match/:id" element={<AnalysisScreen />} />
+      </Routes>
+    </div>
+  ) : (
     <div className="relative flex min-h-dvh flex-col">
       <SessionPuller />
       <AppDrawer />
@@ -47,6 +45,10 @@ function Chrome() {
       </div>
     </div>
   );
+
+  // On a portrait phone, wrap everything in the rotated container. Otherwise the
+  // wrapper is display:contents, so it has no layout effect.
+  return <div className={forcedLandscape ? 'force-landscape' : 'contents'}>{inner}</div>;
 }
 
 function SessionPuller() {
