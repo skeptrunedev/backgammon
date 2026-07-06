@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { ChevronLeft } from 'lucide-react';
+import { Menu, X, Home, Flag, Trophy, Target } from 'lucide-react';
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
@@ -32,6 +32,7 @@ export default function PlayScreen() {
   const navigate = useNavigate();
   const [firstDie, setFirstDie] = useState(0);
   const [showResign, setShowResign] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const resumeStartedRef = useRef<string | null>(null);
 
   // Resume-on-mount: reconstruct the engine for `matchId` unless it's already
@@ -124,6 +125,15 @@ export default function PlayScreen() {
   // Keyboard shortcuts: Enter = roll / confirm, Ctrl/Cmd+Z = undo.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // While the drawer is open, Escape closes it and all game shortcuts are
+      // suppressed so Enter/Ctrl+Z don't fire behind it.
+      if (drawerOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setDrawerOpen(false);
+        }
+        return;
+      }
       const t = e.target as HTMLElement | null;
       if (
         t &&
@@ -164,6 +174,7 @@ export default function PlayScreen() {
     state.pendingHops.length,
     state.thinking,
     showResign,
+    drawerOpen,
     commit,
     undo,
   ]);
@@ -238,44 +249,102 @@ export default function PlayScreen() {
   const playing = state.phase === 'awaitRoll' || state.phase === 'moving';
 
   return (
-    <main className="flex min-h-0 w-full flex-1 flex-col">
-      {/* Status strip. In short landscape (phones) it collapses to a single,
-          low-profile line and respects the left/right notch so the board can
-          claim the reclaimed height. */}
-      <div className="z-10 flex flex-wrap items-center gap-x-4 gap-y-0.5 border-b border-white/10 bg-background/70 px-4 py-1.5 text-xs backdrop-blur sm:text-sm short-landscape:flex-nowrap short-landscape:gap-x-2 short-landscape:overflow-hidden short-landscape:py-0.5 short-landscape:pl-[max(0.75rem,env(safe-area-inset-left))] short-landscape:pr-[max(0.75rem,env(safe-area-inset-right))] short-landscape:text-[11px]">
-        <Button
-          asChild
-          size="sm"
-          variant="ghost"
-          className="-ml-2 h-7 shrink-0 px-2 text-muted-foreground hover:text-foreground short-landscape:h-6 short-landscape:px-1.5"
-        >
-          <Link to="/">
-            <ChevronLeft className="size-4" />
-            Home
-          </Link>
-        </Button>
-        <span className="shrink-0 text-foreground">
-          Match to {b.matchLength}
-          <span className="text-muted-foreground"> · </span>
-          You {b.myScore} — {b.oppScore} gnubg
-          {b.crawford && <span className="text-primary"> · Crawford</span>}
-        </span>
-        <Separator orientation="vertical" className="hidden h-4! sm:block" />
-        <span className="shrink-0 text-muted-foreground">
-          Pips: you {pips.mine} · gnubg {pips.theirs}
-        </span>
-        <span className="ml-auto truncate pl-2 text-right font-medium text-primary">{statusMsg}</span>
-        {playing && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="-mr-2 h-7 shrink-0 px-2 text-muted-foreground hover:text-foreground short-landscape:h-6 short-landscape:px-1.5"
-            onClick={() => setShowResign(true)}
-          >
-            Resign
-          </Button>
-        )}
-      </div>
+    <main className="relative flex min-h-0 w-full flex-1 flex-col">
+      {/* Menu button — opens the side drawer. Anchored top-left over the board,
+          notch-safe in short landscape. Replaces the old full-width status bar. */}
+      <button
+        type="button"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Open menu"
+        className="absolute left-2 top-2 z-20 flex size-9 items-center justify-center rounded-lg border border-white/10 bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:text-foreground short-landscape:left-[max(0.5rem,env(safe-area-inset-left))] short-landscape:top-[max(0.5rem,env(safe-area-inset-top))] short-landscape:size-8"
+      >
+        <Menu className="size-5" />
+      </button>
+
+      {/* Live status — a compact floating pill so whose-turn-it-is stays visible
+          without a bar. Hidden during the cube-offer phase (its own banner shows). */}
+      {statusMsg && state.phase !== 'doubleOffered' && (
+        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full bg-background/70 px-3 py-1 text-xs font-medium text-primary backdrop-blur sm:text-sm short-landscape:top-[max(0.5rem,env(safe-area-inset-top))] short-landscape:text-[11px]">
+          {statusMsg}
+        </div>
+      )}
+
+      {/* Side drawer — holds navigation, match info, and resign, replacing the
+          old top bar. Slides in from the left over a dimmed backdrop. */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in"
+            onClick={() => setDrawerOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col gap-5 border-r border-white/10 bg-card p-4 pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl animate-in slide-in-from-left duration-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Backgammon</h2>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                aria-label="Close menu"
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                navigate('/');
+              }}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              <Home className="size-4" />
+              Home
+            </button>
+
+            <Separator />
+
+            <div className="flex flex-col gap-4 px-1">
+              <div className="flex items-start gap-3">
+                <Trophy className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div className="text-sm">
+                  <div className="text-foreground">Match to {b.matchLength}</div>
+                  <div className="text-muted-foreground">
+                    You {b.myScore} — {b.oppScore} gnubg
+                    {b.crawford && <span className="text-primary"> · Crawford</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Target className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                <div className="text-sm">
+                  <div className="text-foreground">Pip count</div>
+                  <div className="text-muted-foreground">
+                    You {pips.mine} · gnubg {pips.theirs}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {playing && (
+              <>
+                <Separator />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    setShowResign(true);
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                >
+                  <Flag className="size-4" />
+                  Resign
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Board arena: board fills all remaining viewport, aspect preserved. In
           short landscape the margin collapses (and gives way to notch-safe
