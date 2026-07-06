@@ -1,4 +1,5 @@
 import { getEngine, GnubgClient } from '../engine/client';
+import { OFF } from '../engine/types';
 import type { BoardState, CheckerHop, CubeHint, EngineEvent, HintMove } from '../engine/types';
 import { parseCheckerHints, parseCubeHint, parseMoveString, hopsToMoveCommand, sameCheckerPlay, applyOppHop } from '../engine/parse';
 import { legalSequences, continuations, isComplete } from './rules';
@@ -393,9 +394,16 @@ export class Session {
         if (moveMatch && b.turn === -1) {
           const hops = parseMoveString(moveMatch[1]);
           let working = b.points.slice();
+          // Track gnubg's off count per hop too: a bear-off hop removes the
+          // checker from its point AND lands one in the pocket on the same
+          // frame, so the vanishing point checker matches the new pocket
+          // checker and slides in. Without this the checker just disappears
+          // from its point and pops into the tray at finalBoard.
+          let workingOppOff = b.oppOff;
           for (let k = 0; k < hops.length; k++) {
             working = applyOppHop(working, hops[k]);
-            this.update({ board: { ...b, points: working } });
+            if (hops[k].to === OFF) workingOppOff += 1;
+            this.update({ board: { ...b, points: working, oppOff: workingOppOff } });
             await sleep(CHECKER_STEP_MS);
           }
         }
