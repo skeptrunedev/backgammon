@@ -232,9 +232,9 @@ export default function PlayScreen() {
     if (text) downloadText(matFilename(Date.now()), text);
   };
 
-  const statusMsg = state.thinking
-    ? 'gnubg is thinking…'
-    : state.phase === 'awaitRoll'
+  // No "gnubg is thinking…" status — the pill just hides during gnubg's turn.
+  const statusMsg =
+    state.phase === 'awaitRoll'
       ? state.canDouble
         ? 'Roll or double'
         : 'Your roll'
