@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ChevronDownIcon,
@@ -8,6 +8,9 @@ import {
   SparklesIcon,
 } from 'lucide-react';
 import Board from './Board';
+import type { BoardState } from '../engine/types';
+import { OFF } from '../engine/types';
+import { parseMoveString, applyHopsToPoints } from '../engine/parse';
 import { loadMatch, updateMatch } from '../game/store';
 import {
   matchStats,
@@ -196,6 +199,65 @@ export default function AnalysisScreen() {
   );
 }
 
+// Apply a move-string (e.g. "13/7*/3", "bar/22 6/off") to the snapshot so the
+// resulting position can be shown on the board. Returns null if it can't parse.
+function boardAfterMove(snapshot: BoardState, moveStr: string): BoardState | null {
+  const trimmed = (moveStr ?? '').trim();
+  if (!trimmed) return null;
+  try {
+    const hops = parseMoveString(trimmed);
+    if (hops.length === 0) return null;
+    const points = applyHopsToPoints(snapshot.points, hops);
+    const off = hops.filter((h) => h.to === OFF).length;
+    return { ...snapshot, points, myOff: snapshot.myOff + off };
+  } catch {
+    return null;
+  }
+}
+
+// Board for a checker decision with a toggle to play the move on the board:
+// the starting position, the move you made, or the engine's best move.
+function CheckerBoardPreview({ d }: { d: CheckerDecision }) {
+  const [view, setView] = useState<'before' | 'played' | 'best'>('before');
+  const played = useMemo(() => boardAfterMove(d.snapshot, d.playedMove), [d]);
+  const best = useMemo(() => boardAfterMove(d.snapshot, d.bestMove), [d]);
+
+  const board =
+    view === 'played' ? (played ?? d.snapshot) : view === 'best' ? (best ?? d.snapshot) : d.snapshot;
+
+  const tabs: { key: typeof view; label: string; disabled: boolean }[] = [
+    { key: 'before', label: 'Before', disabled: false },
+    { key: 'played', label: 'Your move', disabled: !played },
+    { key: 'best', label: 'Best move', disabled: !best },
+  ];
+
+  return (
+    <>
+      <Board board={board} mini showDice={false} />
+      <span className="text-xs text-muted-foreground">
+        You rolled {d.dice[0]}-{d.dice[1]}
+      </span>
+      <div className="inline-flex rounded-lg border border-white/10 p-0.5 text-xs">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            disabled={t.disabled}
+            onClick={() => setView(t.key)}
+            className={`rounded-md px-2.5 py-1 font-medium transition-colors disabled:opacity-40 ${
+              view === t.key
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -237,11 +299,10 @@ function DecisionCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col items-center gap-1.5">
-          <Board board={d.snapshot} mini showDice={false} />
-          {d.kind === 'checker' && (
-            <span className="text-xs text-muted-foreground">
-              You rolled {d.dice[0]}-{d.dice[1]}
-            </span>
+          {d.kind === 'checker' ? (
+            <CheckerBoardPreview d={d} />
+          ) : (
+            <Board board={d.snapshot} mini showDice={false} />
           )}
         </div>
         {d.kind === 'checker' ? <CheckerDetails d={d} /> : <CubeDetails d={d} />}
