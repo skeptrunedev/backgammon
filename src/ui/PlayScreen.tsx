@@ -270,18 +270,6 @@ export default function PlayScreen() {
         <Menu className="size-5" />
       </button>
 
-      {/* Fullscreen + landscape lock (YouTube-style): forces real landscape even
-          when the phone's rotation is locked, so the app is usable without
-          toggling auto-rotate. No-ops on browsers that don't support it. */}
-      <button
-        type="button"
-        onClick={toggleFullscreen}
-        aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
-        className="absolute right-2 top-2 z-20 flex size-9 items-center justify-center rounded-lg border border-white/10 bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:text-foreground short-landscape:right-[max(0.5rem,env(safe-area-inset-right))] short-landscape:top-[max(0.5rem,env(safe-area-inset-top))] short-landscape:size-8"
-      >
-        {isFullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
-      </button>
-
       {/* Live status — a compact floating pill so whose-turn-it-is stays visible
           without a bar. Hidden during the cube-offer phase (its own banner shows). */}
       {statusMsg && state.phase !== 'doubleOffered' && (
@@ -321,6 +309,20 @@ export default function PlayScreen() {
             >
               <Home className="size-4" />
               Home
+            </button>
+
+            {/* Fullscreen + landscape lock (YouTube-style): real landscape even
+                with the phone's rotation locked. No-ops where unsupported. */}
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                toggleFullscreen();
+              }}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+              {isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
             </button>
 
             <Separator />

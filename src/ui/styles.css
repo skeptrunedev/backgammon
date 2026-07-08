@@ -128,14 +128,12 @@
     }
 }
 
-/* Force-landscape: on a portrait phone we rotate the app 90° so it presents in
+/* Force-landscape: on a portrait phone we rotate the game 90° so it presents in
    landscape (browsers won't let us lock orientation in a plain tab). The
-   container takes the swapped viewport dimensions.
-   - .force-landscape (game): fills the screen, no scroll.
-   - .force-landscape-scroll (home/analysis): content can exceed the height and
-     scroll, so long lists aren't clipped. */
-.force-landscape,
-.force-landscape-scroll {
+   container takes the swapped viewport dimensions and its child fills it. Only
+   the game uses this — it fills the screen with no scrolling. Home/analysis stay
+   upright so their lists scroll normally. */
+.force-landscape {
   position: fixed;
   top: 0;
   left: 100dvw;
@@ -143,22 +141,11 @@
   height: 100dvw;
   transform: rotate(90deg);
   transform-origin: top left;
-}
-.force-landscape {
   overflow: hidden;
 }
 .force-landscape > * {
   width: 100% !important;
   height: 100% !important;
-  min-height: 100% !important;
-}
-.force-landscape-scroll {
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-}
-.force-landscape-scroll > * {
-  width: 100% !important;
   min-height: 100% !important;
 }
 
