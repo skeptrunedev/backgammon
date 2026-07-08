@@ -7,8 +7,9 @@ import AuthDialog from './AuthDialog';
 import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, Home, LogIn, LogOut, Maximize, Minimize } from 'lucide-react';
 import { useForcedLandscape } from './useForcedLandscape';
+import { useFullscreen } from './useFullscreen';
 
 export default function App() {
   return (
@@ -42,16 +43,20 @@ function Chrome() {
     );
   }
 
+  // Home/analysis also present in landscape on a portrait phone, but via the
+  // scrollable rotation variant so their lists can scroll instead of clipping.
   return (
-    <div className="relative flex min-h-dvh flex-col">
-      <SessionPuller />
-      <AppDrawer />
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 pb-6 pt-16 sm:px-6">
-        <Routes>
-          <Route path="/" element={<HomeScreen />} />
-          <Route path="/play/:matchId" element={<PlayScreen />} />
-          <Route path="/match/:id" element={<AnalysisScreen />} />
-        </Routes>
+    <div className={forcedLandscape ? 'force-landscape-scroll' : 'contents'}>
+      <div className="relative flex min-h-dvh flex-col">
+        <SessionPuller />
+        <AppDrawer />
+        <div className="mx-auto w-full max-w-6xl flex-1 px-4 pb-6 pt-16 sm:px-6">
+          <Routes>
+            <Route path="/" element={<HomeScreen />} />
+            <Route path="/play/:matchId" element={<PlayScreen />} />
+            <Route path="/match/:id" element={<AnalysisScreen />} />
+          </Routes>
+        </div>
       </div>
     </div>
   );
@@ -71,6 +76,7 @@ function SessionPuller() {
 // and the auth controls.
 function AppDrawer() {
   const { user, isPending } = useUser();
+  const { active: fullscreen, toggle: toggleFullscreen } = useFullscreen();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
@@ -127,6 +133,18 @@ function AppDrawer() {
               <Home className="size-4" />
               Home
             </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                toggleFullscreen();
+              }}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+              {fullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
+            </button>
 
             <Separator />
 
