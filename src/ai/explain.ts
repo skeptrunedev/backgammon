@@ -1,6 +1,20 @@
 import type { Decision, CheckerDecision, CubeDecision } from '../game/records';
 import type { BoardState } from '../engine/types';
 import { pipCounts } from '../game/rules';
+import { parseMoveString, hopsToNotation } from '../engine/parse';
+
+// Re-derive the played move's hit markers (`*`) from the snapshot. Older records
+// stored the move without them, which made a hitting play look like it missed —
+// confusing both the reader and the AI. Idempotent for newer, already-marked
+// records. Falls back to the raw string if it can't be parsed.
+export function playedNotation(d: CheckerDecision): string {
+  if (!d.playedMove) return d.playedMove;
+  try {
+    return hopsToNotation(d.snapshot.points, parseMoveString(d.playedMove));
+  } catch {
+    return d.playedMove;
+  }
+}
 
 export interface AiSettings {
   hasKey: boolean;
@@ -67,7 +81,7 @@ function checkerPrompt(d: CheckerDecision): string {
     `I rolled ${d.dice[0]}-${d.dice[1]}.`,
     `GNU Backgammon's ranked moves (2-ply):`,
     hintLines,
-    `I played: ${d.playedMove} (equity ${d.playedEquity?.toFixed(3) ?? 'unranked'}).`,
+    `I played: ${playedNotation(d)} (equity ${d.playedEquity?.toFixed(3) ?? 'unranked'}).`,
     `Best was: ${d.bestMove} (equity ${d.bestEquity.toFixed(3)}). I lost ${d.loss.toFixed(3)} equity.`,
     `Explain in plain language why the best move is superior to my move in this position. Focus on the key backgammon concepts at play (racing, priming, blitzing, anchors, timing, blot exposure, duplication, cube leverage, match score). Be specific to this position. Keep it under 250 words.`,
   ].join('\n\n');

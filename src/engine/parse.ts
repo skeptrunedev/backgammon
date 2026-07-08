@@ -116,6 +116,32 @@ export function hopsToMoveCommand(hops: CheckerHop[]): string {
     .join(' ');
 }
 
+/**
+ * Like hopsToMoveCommand, but annotates hits with `*` (matching gnubg's
+ * notation) given the pre-move points. Used for the recorded/displayed move so
+ * a hitting play reads as e.g. "21/16* 16/14" — otherwise it looks like the hit
+ * never happened, which confuses both the reader and the AI analysis.
+ */
+export function hopsToNotation(points: number[], hops: CheckerHop[]): string {
+  const p = points.slice();
+  return hops
+    .map((h) => {
+      const from = h.from === BAR ? 'bar' : String(h.from);
+      const to = h.to === OFF ? 'off' : String(h.to);
+      const hit = h.to !== OFF && p[h.to] === -1; // opponent blot on the landing point
+      p[h.from] -= 1;
+      if (h.to !== OFF) {
+        if (p[h.to] === -1) {
+          p[h.to] = 0;
+          p[0] -= 1;
+        }
+        p[h.to] += 1;
+      }
+      return `${from}/${to}${hit ? '*' : ''}`;
+    })
+    .join(' ');
+}
+
 export function applyHopsToPoints(points: number[], hops: CheckerHop[]): number[] {
   const p = points.slice();
   for (const h of hops) {

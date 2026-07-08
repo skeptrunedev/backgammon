@@ -1,7 +1,7 @@
 import { getEngine, GnubgClient } from '../engine/client';
 import { OFF } from '../engine/types';
 import type { BoardState, CheckerHop, CubeHint, EngineEvent, HintMove } from '../engine/types';
-import { parseCheckerHints, parseCubeHint, parseMoveString, hopsToMoveCommand, sameCheckerPlay, applyOppHop } from '../engine/parse';
+import { parseCheckerHints, parseCubeHint, parseMoveString, hopsToMoveCommand, hopsToNotation, sameCheckerPlay, applyOppHop } from '../engine/parse';
 import { legalSequences, continuations, isComplete } from './rules';
 import type { Decision, MatchRecord } from './records';
 import { buildCheckerDecision, cubeOfferLoss, cubeResponseLoss } from './records';
@@ -497,7 +497,7 @@ export class Session {
         b,
         hints,
         playedHint,
-        hopsToMoveCommand(hops),
+        hopsToNotation(b.points, hops),
         this.gameNo,
         this.record?.decisions.length ?? 0,
       ),

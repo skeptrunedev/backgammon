@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { legalSequences, continuations, isComplete, pipCounts, dieUsage, deadDice } from './rules';
-import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand, applyOppHop } from '../engine/parse';
+import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand, hopsToNotation, applyOppHop } from '../engine/parse';
 import { BAR, OFF } from '../engine/types';
 
 function startingPoints(): number[] {
@@ -122,6 +122,27 @@ describe('move string parsing', () => {
     expect(hopsToMoveCommand(parseMoveString('bar/22 6/off'))).toBe(
       'bar/22 6/off',
     );
+  });
+});
+
+describe('hopsToNotation', () => {
+  it('marks a hit with * on the landing point', () => {
+    const p = new Array(26).fill(0);
+    p[21] = 1;
+    p[16] = -1; // opponent blot on 16
+    const s = hopsToNotation(p, [
+      { from: 21, to: 16 },
+      { from: 16, to: 14 },
+    ]);
+    expect(s).toBe('21/16* 16/14');
+  });
+
+  it('does not mark non-hitting moves or bear-offs', () => {
+    const p = startingPoints();
+    expect(hopsToNotation(p, parseMoveString('8/5 6/5'))).toBe('8/5 6/5');
+    const bear = new Array(26).fill(0);
+    bear[6] = 2;
+    expect(hopsToNotation(bear, [{ from: 6, to: OFF }])).toBe('6/off');
   });
 });
 

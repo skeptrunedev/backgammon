@@ -21,7 +21,7 @@ import {
   type CubeDecision,
   type MatchRecord,
 } from '../game/records';
-import { explainDecision } from '../ai/explain';
+import { explainDecision, playedNotation } from '../ai/explain';
 import { downloadText, matFilename } from './download';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
@@ -319,7 +319,7 @@ function CheckerDetails({ d }: { d: CheckerDecision }) {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p>
-        You played <span className="font-medium">{d.playedMove}</span>{' '}
+        You played <span className="font-medium">{playedNotation(d)}</span>{' '}
         <span className="text-muted-foreground">
           (eq {d.playedEquity !== null ? d.playedEquity.toFixed(3) : 'not ranked'})
         </span>
