@@ -24,6 +24,11 @@ interface MatchSummary {
 let status: SyncStatus = 'idle';
 const listeners = new Set<() => void>();
 
+// Ids deleted this session. A pending/late push or an in-flight pull must not
+// resurrect a just-deleted match before the server DELETE lands. Cleared on
+// refresh — by then the record is gone server-side, so the pull won't see it.
+const deletedIds = new Set<string>();
+
 /** Subscribe to sync status changes (fires after each pull settles). */
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
@@ -43,6 +48,7 @@ function setStatus(next: SyncStatus) {
 
 /** PUT one match to the server. Silently no-ops on 401/network failure. */
 export async function pushMatch(rec: MatchRecord): Promise<void> {
+  if (deletedIds.has(rec.id)) return;
   try {
     const res = await fetch(`/api/matches/${encodeURIComponent(rec.id)}`, {
       method: 'PUT',
@@ -61,6 +67,7 @@ const pushTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** Debounced pushMatch, per match id (3s). */
 export function schedulePush(rec: MatchRecord): void {
+  if (deletedIds.has(rec.id)) return;
   const prev = pushTimers.get(rec.id);
   if (prev !== undefined) clearTimeout(prev);
   pushTimers.set(
@@ -70,6 +77,26 @@ export function schedulePush(rec: MatchRecord): void {
       void pushMatch(rec);
     }, PUSH_DEBOUNCE_MS),
   );
+}
+
+/**
+ * Delete a match on the server and prevent it from coming back: tombstone the
+ * id (so pending/late pushes and pulls skip it) and cancel any queued push.
+ * Silently no-ops on 401/network failure.
+ */
+export async function deleteMatchRemote(id: string): Promise<void> {
+  deletedIds.add(id);
+  const t = pushTimers.get(id);
+  if (t !== undefined) {
+    clearTimeout(t);
+    pushTimers.delete(id);
+  }
+  try {
+    const res = await fetch(`/api/matches/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!res.ok) console.debug(`[sync] delete ${id} skipped (HTTP ${res.status})`);
+  } catch (err) {
+    console.debug('[sync] delete failed (offline?)', err);
+  }
 }
 
 async function fetchDetail(id: string): Promise<MatchRecord | null> {
@@ -143,6 +170,7 @@ async function doPull(): Promise<number> {
     const serverIds = new Set(summaries.map((s) => s.id));
 
     for (const summary of summaries) {
+      if (deletedIds.has(summary.id)) continue; // just deleted this session
       const local = await get<MatchRecord>(PREFIX + summary.id);
       if (!local) {
         // New on server → download. Direct idb write (not the hooked

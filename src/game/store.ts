@@ -1,6 +1,6 @@
 import { get, set, del, keys } from 'idb-keyval';
 import type { MatchRecord } from './records';
-import { schedulePush } from './sync';
+import { schedulePush, deleteMatchRemote } from './sync';
 
 const PREFIX = 'match:';
 
@@ -15,6 +15,9 @@ export async function loadMatch(id: string): Promise<MatchRecord | undefined> {
 
 export async function deleteMatch(id: string): Promise<void> {
   await del(PREFIX + id);
+  // Also remove it server-side (and block any resurrecting sync), otherwise the
+  // next pull re-downloads it — the "deleted match comes back on refresh" bug.
+  await deleteMatchRemote(id);
 }
 
 export async function listMatches(): Promise<MatchRecord[]> {
