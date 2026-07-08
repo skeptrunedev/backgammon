@@ -23,16 +23,26 @@ function Chrome() {
   const fullscreen = pathname.startsWith('/play');
   const forcedLandscape = useForcedLandscape();
 
-  const inner = fullscreen ? (
-    <div className="flex h-dvh flex-col overflow-hidden">
-      <SessionPuller />
-      <Routes>
-        <Route path="/" element={<HomeScreen />} />
-        <Route path="/play/:matchId" element={<PlayScreen />} />
-        <Route path="/match/:id" element={<AnalysisScreen />} />
-      </Routes>
-    </div>
-  ) : (
+  if (fullscreen) {
+    // The game itself fills the screen (no scrolling), so on a portrait phone we
+    // rotate it 90° as a fallback landscape view. The real fix is the fullscreen
+    // + orientation-lock button on the play screen (works even with rotate-lock
+    // on). Home/analysis are NOT rotated so their lists scroll normally.
+    return (
+      <div className={forcedLandscape ? 'force-landscape' : 'contents'}>
+        <div className="flex h-dvh flex-col overflow-hidden">
+          <SessionPuller />
+          <Routes>
+            <Route path="/" element={<HomeScreen />} />
+            <Route path="/play/:matchId" element={<PlayScreen />} />
+            <Route path="/match/:id" element={<AnalysisScreen />} />
+          </Routes>
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <div className="relative flex min-h-dvh flex-col">
       <SessionPuller />
       <AppDrawer />
@@ -45,10 +55,6 @@ function Chrome() {
       </div>
     </div>
   );
-
-  // On a portrait phone, wrap everything in the rotated container. Otherwise the
-  // wrapper is display:contents, so it has no layout effect.
-  return <div className={forcedLandscape ? 'force-landscape' : 'contents'}>{inner}</div>;
 }
 
 function SessionPuller() {

@@ -7,6 +7,7 @@ import { listMatches, deleteMatch } from '../game/store';
 import { subscribe as subscribeSync, getSyncStatus, type SyncStatus } from '../game/sync';
 import { matchStats, type MatchRecord } from '../game/records';
 import { loadAiSettings, saveAiSettings } from '../ai/explain';
+import { enterLandscape } from './useFullscreen';
 import { downloadText, matFilename } from './download';
 import { Button } from '@/components/ui/button';
 import {
@@ -79,7 +80,17 @@ export default function HomeScreen() {
     state.phase !== 'boot' &&
     state.phase !== 'matchOver';
 
+  // On a portrait phone, use the Start tap (a user gesture) to go fullscreen +
+  // lock landscape, so the game opens in real landscape without toggling
+  // auto-rotate. Best-effort; no-ops where unsupported.
+  const goLandscapeIfPhone = () => {
+    if (window.matchMedia('(orientation: portrait) and (max-width: 820px)').matches) {
+      void enterLandscape();
+    }
+  };
+
   const start = () => {
+    goLandscapeIfPhone();
     const id = crypto.randomUUID();
     void session.newMatch(id, Number(length), Number(plies));
     navigate('/play/' + id);
@@ -151,7 +162,7 @@ export default function HomeScreen() {
         {matchInProgress && state.matchId && (
           <CardFooter className="border-t border-white/10 pt-4!">
             <Button variant="outline" asChild>
-              <Link to={`/play/${state.matchId}`}>
+              <Link to={`/play/${state.matchId}`} onClick={goLandscapeIfPhone}>
                 <PlayIcon data-icon="inline-start" />
                 Resume current match
               </Link>

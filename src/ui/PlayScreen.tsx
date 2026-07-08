@@ -16,7 +16,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Flag, Trophy, Target } from 'lucide-react';
+import { Menu, X, Home, Flag, Trophy, Target, Maximize, Minimize } from 'lucide-react';
+import { useFullscreen } from './useFullscreen';
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
@@ -33,6 +34,7 @@ export default function PlayScreen() {
   const [firstDie, setFirstDie] = useState(0);
   const [showResign, setShowResign] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { active: isFullscreen, toggle: toggleFullscreen } = useFullscreen();
   const resumeStartedRef = useRef<string | null>(null);
 
   // Resume-on-mount: reconstruct the engine for `matchId` unless it's already
@@ -266,6 +268,18 @@ export default function PlayScreen() {
         className="absolute left-2 top-2 z-20 flex size-9 items-center justify-center rounded-lg border border-white/10 bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:text-foreground short-landscape:left-[max(0.5rem,env(safe-area-inset-left))] short-landscape:top-[max(0.5rem,env(safe-area-inset-top))] short-landscape:size-8"
       >
         <Menu className="size-5" />
+      </button>
+
+      {/* Fullscreen + landscape lock (YouTube-style): forces real landscape even
+          when the phone's rotation is locked, so the app is usable without
+          toggling auto-rotate. No-ops on browsers that don't support it. */}
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
+        className="absolute right-2 top-2 z-20 flex size-9 items-center justify-center rounded-lg border border-white/10 bg-background/70 text-muted-foreground backdrop-blur transition-colors hover:text-foreground short-landscape:right-[max(0.5rem,env(safe-area-inset-right))] short-landscape:top-[max(0.5rem,env(safe-area-inset-top))] short-landscape:size-8"
+      >
+        {isFullscreen ? <Minimize className="size-5" /> : <Maximize className="size-5" />}
       </button>
 
       {/* Live status — a compact floating pill so whose-turn-it-is stays visible
