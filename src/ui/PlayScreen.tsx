@@ -241,20 +241,6 @@ export default function PlayScreen() {
     if (text) downloadText(matFilename(Date.now()), text);
   };
 
-  // No "gnubg is thinking…" status — the pill just hides during gnubg's turn.
-  const statusMsg =
-    state.phase === 'awaitRoll'
-      ? state.canDouble
-        ? 'Roll or double'
-        : 'Your roll'
-      : state.phase === 'moving'
-        ? `Your move (${b.dice[0]}-${b.dice[1]})`
-        : state.phase === 'doubleOffered'
-          ? `gnubg doubles to ${b.cubeValue * 2}`
-          : state.phase === 'matchOver'
-            ? 'Match over'
-            : '';
-
   const playing = state.phase === 'awaitRoll' || state.phase === 'moving';
 
   return (
@@ -269,14 +255,6 @@ export default function PlayScreen() {
       >
         <Menu className="size-5" />
       </button>
-
-      {/* Live status — a compact floating pill so whose-turn-it-is stays visible
-          without a bar. Hidden during the cube-offer phase (its own banner shows). */}
-      {statusMsg && state.phase !== 'doubleOffered' && (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-full bg-background/70 px-3 py-1 text-xs font-medium text-primary backdrop-blur sm:text-sm short-landscape:top-[max(0.5rem,env(safe-area-inset-top))] short-landscape:text-[11px]">
-          {statusMsg}
-        </div>
-      )}
 
       {/* Side drawer — holds navigation, match info, and resign, replacing the
           old top bar. Slides in from the left over a dimmed backdrop. */}
