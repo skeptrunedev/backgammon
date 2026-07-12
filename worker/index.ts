@@ -24,6 +24,12 @@ interface SettingsRow {
   key_iv: string | null;
 }
 
+interface TrendsRow {
+  sig: string;
+  text: string;
+  updated_at: number;
+}
+
 // ---- AES-256-GCM encryption of users' Anthropic keys, at rest in D1 ----
 function b64encode(bytes: Uint8Array): string {
   let s = '';
@@ -302,6 +308,48 @@ app.post('/api/explain', async (c) => {
     .map((b) => b.text ?? '')
     .join('\n');
   return c.json({ text: text || 'No explanation returned.' });
+});
+
+// ---- Per-user cached AI trends analysis (persisted in D1, not the browser) ----
+app.get('/api/trends', async (c) => {
+  const user = await getSessionUser(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const row = await c.env.DB.prepare(
+    'SELECT sig, text, updated_at FROM trends_analysis WHERE user_id = ?1',
+  )
+    .bind(user.id)
+    .first<TrendsRow>();
+  if (!row) return c.json({ sig: null, text: null, updatedAt: null });
+  return c.json({ sig: row.sig, text: row.text, updatedAt: row.updated_at });
+});
+
+app.put('/api/trends', async (c) => {
+  const user = await getSessionUser(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const raw = await c.req.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+    return c.json({ error: 'Body too large' }, 413);
+  }
+  let body: { sig?: unknown; text?: unknown };
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (typeof body.sig !== 'string' || typeof body.text !== 'string') {
+    return c.json({ error: 'sig and text are required strings' }, 400);
+  }
+  await c.env.DB.prepare(
+    `INSERT INTO trends_analysis (user_id, sig, text, updated_at)
+     VALUES (?1, ?2, ?3, ?4)
+     ON CONFLICT(user_id) DO UPDATE SET
+       sig = excluded.sig,
+       text = excluded.text,
+       updated_at = excluded.updated_at`,
+  )
+    .bind(user.id, body.sig, body.text, Date.now())
+    .run();
+  return c.json({ ok: true });
 });
 
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));

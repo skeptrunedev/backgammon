@@ -32,17 +32,14 @@ const mdComponents: Components = {
   a: (props) => <a className="text-primary underline" {...props} />,
 };
 
-// Persist the AI analysis so it survives navigation and full page refreshes.
-const ANALYSIS_CACHE_KEY = 'bg:trends-analysis:v1';
-
 interface CachedAnalysis {
   sig: string;
   text: string;
 }
 
 // Small djb2-style string hash → base-36. Used to build a cheap, deterministic
-// signature of the analysis input so the cache auto-invalidates when the player
-// has new games/mistakes (which change the prompt).
+// signature of the analysis input so the stored analysis auto-invalidates when
+// the player has new games/mistakes (which change the prompt).
 function hash(s: string): string {
   let h = 5381;
   for (let i = 0; i < s.length; i++) {
@@ -51,13 +48,15 @@ function hash(s: string): string {
   return (h >>> 0).toString(36);
 }
 
-function readAnalysisCache(): CachedAnalysis | null {
+// The analysis is persisted server-side per account (D1), not in the browser, so
+// it follows the user across devices. GET returns the stored analysis (or nulls).
+async function loadAnalysis(): Promise<CachedAnalysis | null> {
   try {
-    const raw = localStorage.getItem(ANALYSIS_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<CachedAnalysis>;
-    if (typeof parsed?.sig === 'string' && typeof parsed?.text === 'string') {
-      return { sig: parsed.sig, text: parsed.text };
+    const res = await fetch('/api/trends', { credentials: 'include' });
+    if (!res.ok) return null;
+    const d = (await res.json().catch(() => ({}))) as Partial<CachedAnalysis>;
+    if (typeof d?.sig === 'string' && typeof d?.text === 'string') {
+      return { sig: d.sig, text: d.text };
     }
     return null;
   } catch {
@@ -65,11 +64,16 @@ function readAnalysisCache(): CachedAnalysis | null {
   }
 }
 
-function writeAnalysisCache(entry: CachedAnalysis): void {
+async function saveAnalysis(entry: CachedAnalysis): Promise<void> {
   try {
-    localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(entry));
+    await fetch('/api/trends', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
   } catch {
-    // localStorage can throw in private mode / when full — ignore.
+    // Best-effort; a failed save just means the analysis re-runs next time.
   }
 }
 
@@ -178,15 +182,24 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
   const [text, setText] = useState<string | null>(null);
   const [cachedSig, setCachedSig] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // On mount, hydrate from the persisted analysis so it shows without re-fetching.
+  // On mount, hydrate from the account's persisted analysis so it shows without
+  // re-fetching. This is a network call now (server-side, not the browser).
   useEffect(() => {
-    const cache = readAnalysisCache();
-    if (cache) {
-      setText(cache.text);
-      setCachedSig(cache.sig);
-    }
+    let cancelled = false;
+    void loadAnalysis().then((cache) => {
+      if (cancelled) return;
+      if (cache) {
+        setText(cache.text);
+        setCachedSig(cache.sig);
+      }
+      setHydrating(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // A cached result whose signature no longer matches the current input means
@@ -216,7 +229,7 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
       const result = data.text || 'No analysis returned.';
       setText(result);
       setCachedSig(sig);
-      writeAnalysisCache({ sig, text: result });
+      void saveAnalysis({ sig, text: result });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -251,6 +264,10 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
           <p className="py-6 text-center text-sm text-muted-foreground">
             Play a few more games — need at least ~6 mistakes to spot patterns.
           </p>
+        ) : hydrating && text === null ? (
+          <div className="flex justify-center py-6 text-muted-foreground">
+            <LoaderCircleIcon className="size-4 animate-spin" />
+          </div>
         ) : loading && text === null ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
             <LoaderCircleIcon className="size-4 animate-spin" />
