@@ -8,7 +8,7 @@ import {
   SparklesIcon,
 } from 'lucide-react';
 import Board from './Board';
-import type { BoardState } from '../engine/types';
+import type { BoardState, CheckerHop } from '../engine/types';
 import { OFF } from '../engine/types';
 import { parseMoveString, applyHopsToPoints } from '../engine/parse';
 import { loadMatch, updateMatch } from '../game/store';
@@ -199,17 +199,14 @@ export default function AnalysisScreen() {
   );
 }
 
-// Apply a move-string (e.g. "13/7*/3", "bar/22 6/off") to the snapshot so the
-// resulting position can be shown on the board. Returns null if it can't parse.
-function boardAfterMove(snapshot: BoardState, moveStr: string): BoardState | null {
+// Parse a move-string (e.g. "13/7*/3", "bar/22 6/off") into hops. Null if empty
+// or unparseable.
+function safeHops(moveStr: string): CheckerHop[] | null {
   const trimmed = (moveStr ?? '').trim();
   if (!trimmed) return null;
   try {
     const hops = parseMoveString(trimmed);
-    if (hops.length === 0) return null;
-    const points = applyHopsToPoints(snapshot.points, hops);
-    const off = hops.filter((h) => h.to === OFF).length;
-    return { ...snapshot, points, myOff: snapshot.myOff + off };
+    return hops.length ? hops : null;
   } catch {
     return null;
   }
@@ -219,16 +216,40 @@ function boardAfterMove(snapshot: BoardState, moveStr: string): BoardState | nul
 // the starting position, the move you made, or the engine's best move.
 function CheckerBoardPreview({ d }: { d: CheckerDecision }) {
   const [view, setView] = useState<'before' | 'played' | 'best'>('before');
-  const played = useMemo(() => boardAfterMove(d.snapshot, d.playedMove), [d]);
-  const best = useMemo(() => boardAfterMove(d.snapshot, d.bestMove), [d]);
+  const [board, setBoard] = useState<BoardState>(d.snapshot);
+  const playedHops = useMemo(() => safeHops(d.playedMove), [d]);
+  const bestHops = useMemo(() => safeHops(d.bestMove), [d]);
 
-  const board =
-    view === 'played' ? (played ?? d.snapshot) : view === 'best' ? (best ?? d.snapshot) : d.snapshot;
+  // Replay the selected move ONE HOP AT A TIME from the Before position. The
+  // board's slide animation matches checkers by nearest position, which mispairs
+  // when a whole multi-hop move (e.g. doubles) lands at once — so give each
+  // checker its real, single-checker path instead of a nonsensical jump.
+  useEffect(() => {
+    const hops = view === 'played' ? playedHops : view === 'best' ? bestHops : null;
+    if (!hops) {
+      setBoard(d.snapshot);
+      return;
+    }
+    setBoard(d.snapshot);
+    let pts = d.snapshot.points.slice();
+    let off = d.snapshot.myOff;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    hops.forEach((h, k) => {
+      timers.push(
+        setTimeout(() => {
+          pts = applyHopsToPoints(pts, [h]);
+          if (h.to === OFF) off += 1;
+          setBoard({ ...d.snapshot, points: pts, myOff: off });
+        }, 140 + k * 420),
+      );
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [view, d, playedHops, bestHops]);
 
   const tabs: { key: typeof view; label: string; disabled: boolean }[] = [
     { key: 'before', label: 'Before', disabled: false },
-    { key: 'played', label: 'Your move', disabled: !played },
-    { key: 'best', label: 'Best move', disabled: !best },
+    { key: 'played', label: 'Your move', disabled: !playedHops },
+    { key: 'best', label: 'Best move', disabled: !bestHops },
   ];
 
   return (
