@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Flag, Trophy, Target, Maximize, Minimize } from 'lucide-react';
+import { Menu, X, Home, Plus, Flag, Trophy, Target, Maximize, Minimize } from 'lucide-react';
 import { useFullscreen } from './useFullscreen';
 
 function Kbd({ children }: { children: ReactNode }) {
@@ -309,6 +309,20 @@ export default function PlayScreen() {
             >
               <Home className="size-4" />
               Home
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                const id = crypto.randomUUID();
+                void session.newMatch(id, 7, 2);
+                navigate('/play/' + id);
+              }}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              <Plus className="size-4" />
+              New game
             </button>
 
             {/* Fullscreen + landscape lock (YouTube-style): real landscape even

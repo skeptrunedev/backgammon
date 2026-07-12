@@ -281,9 +281,9 @@ app.post('/api/explain', async (c) => {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 300,
       system:
-        'You are a world-class backgammon coach. You explain engine evaluations in clear, instructive language for an improving player.',
+        'You are a world-class backgammon coach explaining engine evaluations to an improving player. Be brief and direct: 2-3 sentences, under ~60 words, no preamble or filler. Lead with the single most important reason.',
       messages: [{ role: 'user', content: prompt }],
     }),
   });

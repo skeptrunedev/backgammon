@@ -83,7 +83,7 @@ function checkerPrompt(d: CheckerDecision): string {
     hintLines,
     `I played: ${playedNotation(d)} (equity ${d.playedEquity?.toFixed(3) ?? 'unranked'}).`,
     `Best was: ${d.bestMove} (equity ${d.bestEquity.toFixed(3)}). I lost ${d.loss.toFixed(3)} equity.`,
-    `Explain in plain language why the best move is superior to my move in this position. Focus on the key backgammon concepts at play (racing, priming, blitzing, anchors, timing, blot exposure, duplication, cube leverage, match score). Be specific to this position. Keep it under 250 words.`,
+    `In 2-3 sentences (under 60 words), explain why the best move beats mine here. Name only the 1-2 concepts that actually decide it (e.g. priming, timing, blot exposure, duplication, match score). Be specific and concise; no preamble or restating the moves.`,
   ].join('\n\n');
 }
 
@@ -105,7 +105,7 @@ function cubePrompt(d: CubeDecision): string {
       ? `Winning chances: ${(d.hint.probs[0] * 100).toFixed(1)}% (gammon ${(d.hint.probs[1] * 100).toFixed(1)}%).`
       : '',
     `Correct action: ${d.proper}. ${action}, losing ${d.loss.toFixed(3)} equity.`,
-    `Explain in plain language why the correct cube action is right in this position (consider win chances, gammon threats, recube vig, match score, and the doubling window). Keep it under 250 words.`,
+    `In 2-3 sentences (under 60 words), explain why the correct cube action is right. Name only the 1-2 factors that actually decide it (win chances, gammon threats, recube vig, match score, doubling window). Be specific and concise; no preamble.`,
   ].join('\n\n');
 }
 

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import HomeScreen from './HomeScreen';
 import PlayScreen from './PlayScreen';
 import AnalysisScreen from './AnalysisScreen';
 import AuthDialog from './AuthDialog';
 import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
+import { getSession } from '../game/session';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, Home, Plus, LogIn, LogOut } from 'lucide-react';
 import { useForcedLandscape } from './useForcedLandscape';
 
 export default function App() {
@@ -72,8 +73,17 @@ function SessionPuller() {
 // and the auth controls.
 function AppDrawer() {
   const { user, isPending } = useUser();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+
+  // Quick-start a fresh 7-point match (home defaults) and jump into it.
+  const startNewGame = () => {
+    setOpen(false);
+    const id = crypto.randomUUID();
+    void getSession().newMatch(id, 7, 2);
+    navigate('/play/' + id);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -128,6 +138,15 @@ function AppDrawer() {
               <Home className="size-4" />
               Home
             </Link>
+
+            <button
+              type="button"
+              onClick={startNewGame}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              <Plus className="size-4" />
+              New game
+            </button>
 
             <Separator />
 
