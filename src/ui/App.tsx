@@ -3,12 +3,13 @@ import { BrowserRouter, Routes, Route, Link, useLocation, useNavigate } from 're
 import HomeScreen from './HomeScreen';
 import PlayScreen from './PlayScreen';
 import AnalysisScreen from './AnalysisScreen';
+import TrendsScreen from './TrendsScreen';
 import AuthDialog from './AuthDialog';
 import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
 import { getSession } from '../game/session';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Plus, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, Home, Plus, TrendingUp, LogIn, LogOut } from 'lucide-react';
 import { useForcedLandscape } from './useForcedLandscape';
 
 export default function App() {
@@ -37,6 +38,7 @@ function Chrome() {
             <Route path="/" element={<HomeScreen />} />
             <Route path="/play/:matchId" element={<PlayScreen />} />
             <Route path="/match/:id" element={<AnalysisScreen />} />
+            <Route path="/trends" element={<TrendsScreen />} />
           </Routes>
         </div>
       </div>
@@ -53,6 +55,7 @@ function Chrome() {
           <Route path="/" element={<HomeScreen />} />
           <Route path="/play/:matchId" element={<PlayScreen />} />
           <Route path="/match/:id" element={<AnalysisScreen />} />
+          <Route path="/trends" element={<TrendsScreen />} />
         </Routes>
       </div>
     </div>
@@ -147,6 +150,15 @@ function AppDrawer() {
               <Plus className="size-4" />
               New game
             </button>
+
+            <Link
+              to="/trends"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              <TrendingUp className="size-4" />
+              Trends
+            </Link>
 
             <Separator />
 
