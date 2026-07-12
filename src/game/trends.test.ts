@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MatchRecord, Decision } from './records';
 import type { BoardState } from '../engine/types';
-import { computeRating, buildTrendsPrompt } from './trends';
+import { computeRating, buildTrendsPrompt, computeMemgSeries } from './trends';
 
 function fakeBoard(): BoardState {
   return {
@@ -126,6 +126,57 @@ describe('computeRating', () => {
     expect(high.estRating).toBe(2000);
     const low = computeRating([record([checker(0.5)])])!; // 500 mEMG -> clamp 600
     expect(low.estRating).toBe(600);
+  });
+});
+
+function recordAt(startedAt: number | null, decisions: Decision[]): MatchRecord {
+  return { ...record(decisions), startedAt: startedAt as number };
+}
+
+describe('computeMemgSeries', () => {
+  it('returns an empty series with no records or no decisions', () => {
+    expect(computeMemgSeries([])).toEqual([]);
+    expect(computeMemgSeries([record([])])).toEqual([]);
+  });
+
+  it('computes one point per match using the same formula as computeRating', () => {
+    // total loss 0.011 over 2 decisions -> 5.5 mEMG (matches computeRating)
+    const series = computeMemgSeries([recordAt(10, [checker(0.004), checker(0.007)])]);
+    expect(series).toHaveLength(1);
+    expect(series[0].mEMG).toBe(5.5);
+    expect(series[0].decisions).toBe(2);
+    expect(series[0].startedAt).toBe(10);
+  });
+
+  it('filters out zero-decision matches', () => {
+    const series = computeMemgSeries([
+      recordAt(1, [checker(0.01)]),
+      recordAt(2, []),
+      recordAt(3, [cube(0.03)]),
+    ]);
+    expect(series).toHaveLength(2);
+    expect(series.map((p) => p.startedAt)).toEqual([1, 3]);
+  });
+
+  it('sorts ascending by startedAt', () => {
+    const series = computeMemgSeries([
+      recordAt(30, [checker(0.01)]),
+      recordAt(10, [checker(0.02)]),
+      recordAt(20, [checker(0.03)]),
+    ]);
+    expect(series.map((p) => p.startedAt)).toEqual([10, 20, 30]);
+  });
+
+  it('sorts null startedAt last, stably', () => {
+    const series = computeMemgSeries([
+      recordAt(null, [checker(0.01)]),
+      recordAt(5, [checker(0.02)]),
+      recordAt(null, [checker(0.03)]),
+    ]);
+    expect(series.map((p) => p.startedAt)).toEqual([5, null, null]);
+    // the two null-dated matches keep their original relative order
+    expect(series[1].mEMG).toBe(10);
+    expect(series[2].mEMG).toBe(30);
   });
 });
 

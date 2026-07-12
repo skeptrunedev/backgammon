@@ -4,7 +4,13 @@ import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import { listMatches } from '../game/store';
 import { type MatchRecord } from '../game/records';
-import { computeRating, buildTrendsPrompt, type RatingResult } from '../game/trends';
+import {
+  computeRating,
+  computeMemgSeries,
+  buildTrendsPrompt,
+  type RatingResult,
+} from '../game/trends';
+import MemgChart from './MemgChart';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -118,6 +124,7 @@ export default function TrendsScreen() {
       ) : (
         <>
           <RatingCard rating={rating} />
+          <ProgressCard records={records} />
           <MistakesCard records={records} />
         </>
       )}
@@ -170,6 +177,29 @@ function RatingCard({ rating }: { rating: RatingResult | null }) {
               </p>
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProgressCard({ records }: { records: MatchRecord[] }) {
+  const series = computeMemgSeries(records);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Progress over time</CardTitle>
+        <CardDescription>
+          Your error rate per decision across matches — lower is better.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {series.length < 2 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Play at least two analyzed matches to chart your progress.
+          </p>
+        ) : (
+          <MemgChart points={series} />
         )}
       </CardContent>
     </Card>

@@ -82,6 +82,46 @@ export function computeRating(records: MatchRecord[]): RatingResult | null {
   return { games, decisions, avgErrorRate, band, estRating, blurb };
 }
 
+export interface MemgPoint {
+  startedAt: number | null;
+  mEMG: number;
+  decisions: number;
+}
+
+/**
+ * One mEMG point per match that has >=1 decision, using the SAME per-decision
+ * equity-loss source and formula as {@link computeRating}
+ * (`round(1000 * sumLoss / decisionCount, 1)`). Sorted ascending by startedAt so
+ * the oldest match is first; matches with a null startedAt sort last (stable).
+ * Pure and deterministic.
+ */
+export function computeMemgSeries(records: MatchRecord[]): MemgPoint[] {
+  const points: MemgPoint[] = [];
+
+  for (const rec of records) {
+    if (!rec.decisions.length) continue;
+    let totalLoss = 0;
+    for (const d of rec.decisions) totalLoss += d.loss;
+    const decisions = rec.decisions.length;
+    const mEMG = Math.round((1000 * totalLoss) / decisions * 10) / 10;
+    points.push({ startedAt: rec.startedAt ?? null, mEMG, decisions });
+  }
+
+  // Stable sort ascending by startedAt; null startedAt sorts last.
+  return points
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => {
+      const av = a.p.startedAt;
+      const bv = b.p.startedAt;
+      if (av === null && bv === null) return a.i - b.i;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      if (av !== bv) return av - bv;
+      return a.i - b.i;
+    })
+    .map(({ p }) => p);
+}
+
 function mEMG(loss: number): number {
   return Math.round(loss * 1000);
 }
