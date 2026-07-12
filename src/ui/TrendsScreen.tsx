@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { LoaderCircleIcon, RefreshCwIcon, SparklesIcon } from 'lucide-react';
+import { InfoIcon, LoaderCircleIcon, RefreshCwIcon, SparklesIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import { listMatches } from '../game/store';
@@ -31,6 +31,53 @@ const mdComponents: Components = {
   ),
   a: (props) => <a className="text-primary underline" {...props} />,
 };
+
+// Persist the AI analysis so it survives navigation and full page refreshes.
+const ANALYSIS_CACHE_KEY = 'bg:trends-analysis:v1';
+
+interface CachedAnalysis {
+  sig: string;
+  text: string;
+}
+
+// Small djb2-style string hash → base-36. Used to build a cheap, deterministic
+// signature of the analysis input so the cache auto-invalidates when the player
+// has new games/mistakes (which change the prompt).
+function hash(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 33) ^ s.charCodeAt(i);
+  }
+  return (h >>> 0).toString(36);
+}
+
+function readAnalysisCache(): CachedAnalysis | null {
+  try {
+    const raw = localStorage.getItem(ANALYSIS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CachedAnalysis>;
+    if (typeof parsed?.sig === 'string' && typeof parsed?.text === 'string') {
+      return { sig: parsed.sig, text: parsed.text };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeAnalysisCache(entry: CachedAnalysis): void {
+  try {
+    localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // localStorage can throw in private mode / when full — ignore.
+  }
+}
+
+const SYSTEM_PROMPT =
+  "You are a world-class backgammon coach reviewing an improving player's recurring mistakes across many games. Identify the 3-5 patterns that cost the most equity and matter most to fix. Respond ONLY as a markdown bullet list — each bullet a **bold short label** followed by one concise, specific sentence of advice. Rank by importance. No preamble, no headings, no closing remarks.";
+
+const MEMG_HINT =
+  'mEMG = milli-EMG: thousandths of a point of normalized equity (EMG) lost per decision — the standard "distance from perfect play" error rate used by engines like GNU Backgammon / XG. Lower is better; world-class play is under ~3 per decision.';
 
 export default function TrendsScreen() {
   const [records, setRecords] = useState<MatchRecord[]>([]);
@@ -104,11 +151,20 @@ function RatingCard({ rating }: { rating: RatingResult | null }) {
                 </span>
               </div>
             </div>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-              <Stat label="Error rate" value={`${rating.avgErrorRate} mEMG per decision`} />
-              <Stat label="Games" value={String(rating.games)} />
-              <Stat label="Decisions" value={String(rating.decisions)} />
-            </dl>
+            <div className="flex flex-col gap-2">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+                <Stat
+                  label="Error rate"
+                  value={`${rating.avgErrorRate} mEMG per decision`}
+                  hint={MEMG_HINT}
+                />
+                <Stat label="Games" value={String(rating.games)} />
+                <Stat label="Decisions" value={String(rating.decisions)} />
+              </dl>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {MEMG_HINT}
+              </p>
+            </div>
           </div>
         )}
       </CardContent>
@@ -118,9 +174,24 @@ function RatingCard({ rating }: { rating: RatingResult | null }) {
 
 function MistakesCard({ records }: { records: MatchRecord[] }) {
   const prompt = buildTrendsPrompt(records);
+  const sig = prompt ? hash(prompt) : '';
   const [text, setText] = useState<string | null>(null);
+  const [cachedSig, setCachedSig] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // On mount, hydrate from the persisted analysis so it shows without re-fetching.
+  useEffect(() => {
+    const cache = readAnalysisCache();
+    if (cache) {
+      setText(cache.text);
+      setCachedSig(cache.sig);
+    }
+  }, []);
+
+  // A cached result whose signature no longer matches the current input means
+  // the player has played more games since it was generated.
+  const stale = text !== null && cachedSig !== null && sig !== '' && cachedSig !== sig;
 
   const run = useCallback(async () => {
     if (!prompt) return;
@@ -131,7 +202,7 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, maxTokens: 1024, system: SYSTEM_PROMPT }),
       });
       if (res.status === 401) {
         throw new Error(
@@ -142,13 +213,16 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
       if (!res.ok) {
         throw new Error(data.error || `Analysis failed (${res.status})`);
       }
-      setText(data.text || 'No analysis returned.');
+      const result = data.text || 'No analysis returned.';
+      setText(result);
+      setCachedSig(sig);
+      writeAnalysisCache({ sig, text: result });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [prompt]);
+  }, [prompt, sig]);
 
   return (
     <Card>
@@ -185,8 +259,15 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
         ) : error ? (
           <p className="py-4 text-sm text-destructive">{error}</p>
         ) : text !== null ? (
-          <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground/90">
-            <ReactMarkdown components={mdComponents}>{text}</ReactMarkdown>
+          <div className="flex flex-col gap-2">
+            {stale && (
+              <p className="text-xs text-muted-foreground">
+                New games since this analysis — Refresh to update.
+              </p>
+            )}
+            <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground/90">
+              <ReactMarkdown components={mdComponents}>{text}</ReactMarkdown>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-start gap-3 py-2">
@@ -204,10 +285,22 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dt className="flex items-center gap-1 text-xs text-muted-foreground">
+        {label}
+        {hint && (
+          <span
+            title={hint}
+            aria-label={hint}
+            role="img"
+            className="inline-flex cursor-help text-muted-foreground/70"
+          >
+            <InfoIcon className="size-3" aria-hidden="true" />
+          </span>
+        )}
+      </dt>
       <dd className="font-medium tabular-nums text-foreground">{value}</dd>
     </div>
   );

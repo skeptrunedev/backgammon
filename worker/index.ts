@@ -251,7 +251,7 @@ app.post('/api/explain', async (c) => {
   if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
     return c.json({ error: 'Prompt too large' }, 413);
   }
-  let body: { prompt?: unknown; model?: unknown };
+  let body: { prompt?: unknown; model?: unknown; maxTokens?: unknown; system?: unknown };
   try {
     body = JSON.parse(raw);
   } catch {
@@ -259,6 +259,12 @@ app.post('/api/explain', async (c) => {
   }
   const prompt = typeof body.prompt === 'string' ? body.prompt : '';
   if (!prompt) return c.json({ error: 'Missing prompt' }, 400);
+
+  const maxTokens = Math.min(Math.max(Math.round(Number(body.maxTokens)) || 300, 1), 2000);
+  const defaultSystem =
+    'You are a world-class backgammon coach explaining engine evaluations to an improving player. Be brief and direct: 2-3 sentences, under ~60 words, no preamble or filler. Lead with the single most important reason.';
+  const system =
+    typeof body.system === 'string' && body.system.trim() ? body.system : defaultSystem;
 
   const row = await c.env.DB.prepare(
     'SELECT model, key_ciphertext, key_iv FROM user_settings WHERE user_id = ?1',
@@ -281,9 +287,8 @@ app.post('/api/explain', async (c) => {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 300,
-      system:
-        'You are a world-class backgammon coach explaining engine evaluations to an improving player. Be brief and direct: 2-3 sentences, under ~60 words, no preamble or filler. Lead with the single most important reason.',
+      max_tokens: maxTokens,
+      system,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
