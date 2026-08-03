@@ -38,6 +38,9 @@ const AI_STEP_DELAY_MS = 900;
 // Beat between gnubg's individual checker hops so a multi-checker move plays out
 // step by step instead of landing all at once.
 const CHECKER_STEP_MS = 750;
+// How long a per-game result banner ("gnubg wins 2 points") stays up before it
+// auto-dismisses. Match-over banners are terminal and never auto-clear.
+const GAME_BANNER_MS = 4000;
 
 export class Session {
   private engine: GnubgClient;
@@ -60,6 +63,9 @@ export class Session {
   // While true, board events update internal state but don't render — lets
   // settle() replay gnubg's move hop-by-hop instead of jumping to the result.
   private suppressBoardRender = false;
+  // Auto-dismiss timer for the per-game result banner, so it doesn't linger for
+  // the rest of a multi-point match.
+  private bannerTimer: ReturnType<typeof setTimeout> | null = null;
 
   state: SessionState = {
     phase: 'boot',
@@ -92,6 +98,25 @@ export class Session {
   private update(partial: Partial<SessionState>) {
     this.state = { ...this.state, ...partial };
     for (const fn of this.listeners) fn();
+  }
+
+  private clearBannerTimer() {
+    if (this.bannerTimer) {
+      clearTimeout(this.bannerTimer);
+      this.bannerTimer = null;
+    }
+  }
+
+  // Show a per-game result banner that dismisses itself after a beat. The
+  // guard means a later match-over/error banner (a different string) is never
+  // wiped by a stale timer.
+  private showGameBanner(text: string) {
+    this.clearBannerTimer();
+    this.update({ banner: text });
+    this.bannerTimer = setTimeout(() => {
+      this.bannerTimer = null;
+      if (this.state.banner === text) this.update({ banner: null });
+    }, GAME_BANNER_MS);
   }
 
   private onEngineEvent(ev: EngineEvent) {
@@ -153,6 +178,7 @@ export class Session {
     this.resignOffered = 0;
     this.humanDoubled = false;
     this.board = null;
+    this.clearBannerTimer();
     this.record = {
       id,
       startedAt: Date.now(),
@@ -200,6 +226,7 @@ export class Session {
     this.resignOffered = 0;
     this.humanDoubled = false;
     this.board = null;
+    this.clearBannerTimer();
     this.record = record;
     this.update({
       matchId: record.id,
@@ -272,7 +299,7 @@ export class Session {
           return;
         }
         if (this.gameEndText) {
-          this.update({ banner: this.gameEndText });
+          this.showGameBanner(this.gameEndText);
           this.gameEndText = null;
           void this.persist();
         }
@@ -429,6 +456,7 @@ export class Session {
       await this.persist();
     }
     const b2 = this.board;
+    this.clearBannerTimer();
     this.update({
       phase: 'matchOver',
       banner:
