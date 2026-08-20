@@ -57,6 +57,10 @@ export class Session {
   private cubeHintPromise: Promise<CubeHint | null> | null = null;
   private responseHintPromise: Promise<CubeHint | null> | null = null;
   private settling = false;
+  // Set when the human forfeits the match. A settle() loop already in flight
+  // (e.g. gnubg mid-turn) checks this and bails instead of re-entering a live
+  // phase over the match-over screen.
+  private abandoned = false;
   // True between the human offering a double and gnubg responding to it, so the
   // pending-cube board state is handled as gnubg's response, not shown to us.
   private humanDoubled = false;
@@ -177,6 +181,7 @@ export class Session {
     this.matchEndText = null;
     this.resignOffered = 0;
     this.humanDoubled = false;
+    this.abandoned = false;
     this.board = null;
     this.clearBannerTimer();
     this.record = {
@@ -225,6 +230,7 @@ export class Session {
     this.matchEndText = null;
     this.resignOffered = 0;
     this.humanDoubled = false;
+    this.abandoned = false;
     this.board = null;
     this.clearBannerTimer();
     this.record = record;
@@ -293,6 +299,7 @@ export class Session {
     try {
       let quiet = 0;
       for (let i = 0; i < 1000; i++) {
+        if (this.abandoned) return;
         const b = this.board;
         if (this.matchIsOver(b)) {
           await this.finishMatch();
@@ -436,7 +443,7 @@ export class Session {
         }
         this.update({ board: finalBoard });
       }
-      this.update({ thinking: false, error: 'Engine did not settle.' });
+      if (!this.abandoned) this.update({ thinking: false, error: 'Engine did not settle.' });
     } finally {
       this.settling = false;
     }
@@ -622,6 +629,41 @@ export class Session {
     this.update({ thinking: true, resignValue: 0 });
     await this.act('reject');
     await this.settle();
+  }
+
+  /**
+   * Concede the entire match. Distinct from resign(), which gives up only the
+   * current game and lets the match play on: this closes the match then and
+   * there. gnubg is credited the full match length, the record is marked
+   * finished (and forfeited) so it leaves the "in progress" list, and the
+   * decisions played so far stay intact for analysis and trends.
+   */
+  async forfeitMatch() {
+    if (!this.record) return;
+    if (this.state.phase === 'boot' || this.state.phase === 'matchOver') return;
+    this.abandoned = true;
+    this.update({ thinking: true });
+    const matText = await this.exportMat();
+    const b = this.board;
+    this.record.finishedAt = Date.now();
+    this.record.forfeited = true;
+    this.record.myScore = b?.myScore ?? this.record.myScore;
+    this.record.oppScore = this.record.matchLength;
+    this.record.winner = 'opponent';
+    this.record.matText = matText;
+    await this.persist();
+    this.clearBannerTimer();
+    this.resignOffered = 0;
+    this.update({
+      phase: 'matchOver',
+      banner: 'Match forfeited — gnubg wins',
+      resignValue: 0,
+      pendingHops: [],
+      legal: [],
+      canDouble: false,
+      canCommit: false,
+      thinking: false,
+    });
   }
 
   async resign(value: 1 | 2 | 3) {

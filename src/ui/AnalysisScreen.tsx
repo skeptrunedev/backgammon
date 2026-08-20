@@ -128,11 +128,13 @@ export default function AnalysisScreen() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-col gap-1.5">
               <CardTitle>
-                {rec.winner === 'me'
-                  ? 'You won'
-                  : rec.winner === 'opponent'
-                    ? 'gnubg won'
-                    : 'Unfinished match'}{' '}
+                {rec.forfeited
+                  ? 'You forfeited'
+                  : rec.winner === 'me'
+                    ? 'You won'
+                    : rec.winner === 'opponent'
+                      ? 'gnubg won'
+                      : 'Unfinished match'}{' '}
                 {rec.myScore}–{rec.oppScore}
                 <span className="ml-2 font-normal text-muted-foreground">
                   to {rec.matchLength}

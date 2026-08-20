@@ -44,6 +44,12 @@ export interface MatchRecord {
   myScore: number;
   oppScore: number;
   winner: 'me' | 'opponent' | null;
+  /**
+   * True when the human conceded the whole match from the menu rather than
+   * playing it out. The match still counts as a loss (winner 'opponent',
+   * opponent credited the full match length), but the UI labels it honestly.
+   */
+  forfeited?: boolean;
   decisions: Decision[];
   matText: string | null;
   /** gnubg AI ply level, so resume restores the same strength. */

@@ -235,8 +235,13 @@ export default function HomeScreen() {
 function MatchRow({ rec, onDelete }: { rec: MatchRecord; onDelete: () => void }) {
   const s = matchStats(rec);
   const unfinished = rec.finishedAt == null;
-  const result =
-    rec.winner === 'me' ? 'You won' : rec.winner === 'opponent' ? 'gnubg won' : 'In progress';
+  const result = rec.forfeited
+    ? 'You forfeited'
+    : rec.winner === 'me'
+      ? 'You won'
+      : rec.winner === 'opponent'
+        ? 'gnubg won'
+        : 'In progress';
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div className="min-w-0 flex-1">

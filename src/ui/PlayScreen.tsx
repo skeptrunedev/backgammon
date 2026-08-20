@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Plus, TrendingUp, Flag, Trophy, Target, Maximize, Minimize } from 'lucide-react';
+import { Menu, X, Home, Plus, TrendingUp, Flag, LogOut, Trophy, Target, Maximize, Minimize } from 'lucide-react';
 import { useFullscreen } from './useFullscreen';
 
 function Kbd({ children }: { children: ReactNode }) {
@@ -33,6 +33,7 @@ export default function PlayScreen() {
   const navigate = useNavigate();
   const [firstDie, setFirstDie] = useState(0);
   const [showResign, setShowResign] = useState(false);
+  const [showForfeit, setShowForfeit] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { active: isFullscreen, toggle: toggleFullscreen } = useFullscreen();
   const resumeStartedRef = useRef<string | null>(null);
@@ -156,7 +157,10 @@ export default function PlayScreen() {
         return;
       }
       const dialogOpen =
-        showResign || state.phase === 'doubleOffered' || state.phase === 'resignOffered';
+        showResign ||
+        showForfeit ||
+        state.phase === 'doubleOffered' ||
+        state.phase === 'resignOffered';
       if (dialogOpen || state.thinking) return;
 
       if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -183,6 +187,7 @@ export default function PlayScreen() {
     state.pendingHops.length,
     state.thinking,
     showResign,
+    showForfeit,
     drawerOpen,
     commit,
     undo,
@@ -353,19 +358,35 @@ export default function PlayScreen() {
               </div>
             </div>
 
-            {playing && (
+            {/* Give-up actions. Resign concedes the current game only, and
+                needs it to be our turn; forfeit ends the whole match and is
+                available for as long as the match is live. */}
+            {state.phase !== 'matchOver' && (
               <>
                 <Separator />
+                {playing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrawerOpen(false);
+                      setShowResign(true);
+                    }}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                  >
+                    <Flag className="size-4" />
+                    Resign game
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setDrawerOpen(false);
-                    setShowResign(true);
+                    setShowForfeit(true);
                   }}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
                 >
-                  <Flag className="size-4" />
-                  Resign
+                  <LogOut className="size-4" />
+                  Forfeit match
                 </button>
               </>
             )}
@@ -530,6 +551,33 @@ export default function PlayScreen() {
               Decline
             </Button>
             <Button onClick={() => session.acceptResign()}>Accept</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showForfeit} onOpenChange={setShowForfeit}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Forfeit match?</DialogTitle>
+            <DialogDescription>
+              gnubg is awarded the match at {b.myScore}–{b.matchLength} and it ends now.
+              You won't be able to resume it, but everything you've already played stays
+              available for analysis.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowForfeit(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setShowForfeit(false);
+                void session.forfeitMatch();
+              }}
+            >
+              Forfeit match
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
