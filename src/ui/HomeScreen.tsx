@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SettingsIcon, Trash2Icon, DownloadIcon, PlayIcon } from 'lucide-react';
 import { useSession } from './useSession';
@@ -39,6 +39,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
 const MATCH_LENGTHS = ['1', '3', '5', '7', '11'];
+const DEFAULT_LENGTH = '7';
 
 const PLY_OPTIONS = [
   { value: '0', label: 'Fast (0-ply)' },
@@ -50,9 +51,13 @@ export default function HomeScreen() {
   const { session, state } = useSession();
   const { user } = useUser();
   const navigate = useNavigate();
-  const [length, setLength] = useState('7');
+  const [length, setLength] = useState(DEFAULT_LENGTH);
   const [plies, setPlies] = useState('2');
   const [matches, setMatches] = useState<MatchRecord[]>([]);
+  // Set once the player picks a length themselves, which freezes the
+  // last-match default below — otherwise a sync pull landing mid-session
+  // would yank their choice back to whatever they last played.
+  const lengthTouched = useRef(false);
 
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
 
@@ -63,6 +68,18 @@ export default function HomeScreen() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Default the match length to the one they last played. The list arrives
+  // async (IndexedDB first, then a server pull for a signed-in account), so
+  // this runs as matches land rather than at mount. Records are sorted newest
+  // first by listMatches. A length outside the preset options would leave the
+  // Select blank, so anything unrecognized falls back to DEFAULT_LENGTH.
+  useEffect(() => {
+    if (lengthTouched.current) return;
+    const last = matches[0];
+    const v = last ? String(last.matchLength) : DEFAULT_LENGTH;
+    setLength(MATCH_LENGTHS.includes(v) ? v : DEFAULT_LENGTH);
+  }, [matches]);
 
   // Re-read the local list whenever a server pull settles.
   useEffect(
@@ -123,7 +140,13 @@ export default function HomeScreen() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="match-length">Match length</Label>
-              <Select value={length} onValueChange={setLength}>
+              <Select
+                value={length}
+                onValueChange={(v) => {
+                  lengthTouched.current = true;
+                  setLength(v);
+                }}
+              >
                 <SelectTrigger id="match-length" className="w-36">
                   <SelectValue />
                 </SelectTrigger>
