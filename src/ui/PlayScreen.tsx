@@ -261,16 +261,20 @@ export default function PlayScreen() {
         <Menu className="size-5" />
       </button>
 
-      {/* Side drawer — holds navigation, match info, and resign, replacing the
-          old top bar. Slides in from the left over a dimmed backdrop. */}
+      {/* Side drawer — holds navigation, match info, and the give-up actions,
+          replacing the old top bar. Slides in from the left over a dimmed
+          backdrop. The header is pinned and the list below it scrolls: on a
+          landscape phone (~390px tall) the full list doesn't fit, and without
+          this the bottom entries are clipped and unreachable. */}
       {drawerOpen && (
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col gap-5 border-r border-white/10 bg-card p-4 pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl animate-in slide-in-from-left duration-200">
-            <div className="flex items-center justify-between">
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col border-r border-white/10 bg-card shadow-2xl animate-in slide-in-from-left duration-200">
+            {/* Pinned: Close stays reachable however far the list scrolls. */}
+            <div className="flex shrink-0 items-center justify-between gap-2 py-4 pr-4 pl-[max(1rem,env(safe-area-inset-left))] short-landscape:py-2">
               <h2 className="text-lg font-semibold text-foreground">Backgammon</h2>
               <button
                 type="button"
@@ -282,114 +286,121 @@ export default function PlayScreen() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setDrawerOpen(false);
-                navigate('/');
-              }}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              <Home className="size-4" />
-              Home
-            </button>
+            {/* min-h-0 lets this flex child actually shrink and scroll;
+                overscroll-contain keeps the swipe off the board behind it. */}
+            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain pr-4 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] short-landscape:gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  navigate('/');
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                <Home className="size-4" />
+                Home
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setDrawerOpen(false);
-                const id = crypto.randomUUID();
-                void session.newMatch(id, 7, 2);
-                navigate('/play/' + id);
-              }}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              <Plus className="size-4" />
-              New game
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  const id = crypto.randomUUID();
+                  // Carry the current match's length over rather than snapping
+                  // back to a hardcoded 7 — same "what you last played" default
+                  // the home screen uses.
+                  void session.newMatch(id, b.matchLength, 2);
+                  navigate('/play/' + id);
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                <Plus className="size-4" />
+                New game
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setDrawerOpen(false);
-                navigate('/trends');
-              }}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              <TrendingUp className="size-4" />
-              Trends
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  navigate('/trends');
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                <TrendingUp className="size-4" />
+                Trends
+              </button>
 
-            {/* Fullscreen + landscape lock (YouTube-style): real landscape even
-                with the phone's rotation locked. No-ops where unsupported. */}
-            <button
-              type="button"
-              onClick={() => {
-                setDrawerOpen(false);
-                toggleFullscreen();
-              }}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
-            >
-              {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-              {isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
-            </button>
+              {/* Fullscreen + landscape lock (YouTube-style): real landscape even
+                  with the phone's rotation locked. No-ops where unsupported. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  toggleFullscreen();
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                {isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
+              </button>
 
-            <Separator />
+              <Separator />
 
-            <div className="flex flex-col gap-4 px-1">
-              <div className="flex items-start gap-3">
-                <Trophy className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <div className="text-sm">
-                  <div className="text-foreground">Match to {b.matchLength}</div>
-                  <div className="text-muted-foreground">
-                    You {b.myScore} — {b.oppScore} gnubg
-                    {b.crawford && <span className="text-primary"> · Crawford</span>}
+              <div className="flex flex-col gap-4 px-1">
+                <div className="flex items-start gap-3">
+                  <Trophy className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="text-sm">
+                    <div className="text-foreground">Match to {b.matchLength}</div>
+                    <div className="text-muted-foreground">
+                      You {b.myScore} — {b.oppScore} gnubg
+                      {b.crawford && <span className="text-primary"> · Crawford</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Target className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <div className="text-sm">
+                    <div className="text-foreground">Pip count</div>
+                    <div className="text-muted-foreground">
+                      You {pips.mine} · gnubg {pips.theirs}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <Target className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <div className="text-sm">
-                  <div className="text-foreground">Pip count</div>
-                  <div className="text-muted-foreground">
-                    You {pips.mine} · gnubg {pips.theirs}
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Give-up actions. Resign concedes the current game only, and
-                needs it to be our turn; forfeit ends the whole match and is
-                available for as long as the match is live. */}
-            {state.phase !== 'matchOver' && (
-              <>
-                <Separator />
-                {playing && (
+              {/* Give-up actions. Resign concedes the current game only, and
+                  needs it to be our turn; forfeit ends the whole match and is
+                  available for as long as the match is live. */}
+              {state.phase !== 'matchOver' && (
+                <>
+                  <Separator />
+                  {playing && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDrawerOpen(false);
+                        setShowResign(true);
+                      }}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                    >
+                      <Flag className="size-4" />
+                      Resign game
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
                       setDrawerOpen(false);
-                      setShowResign(true);
+                      setShowForfeit(true);
                     }}
                     className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
                   >
-                    <Flag className="size-4" />
-                    Resign game
+                    <LogOut className="size-4" />
+                    Forfeit match
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDrawerOpen(false);
-                    setShowForfeit(true);
-                  }}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
-                >
-                  <LogOut className="size-4" />
-                  Forfeit match
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
