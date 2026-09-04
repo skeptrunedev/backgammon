@@ -127,7 +127,8 @@ export default function PipTrainingScreen() {
     setMine(''); setTheirs(''); setMargin(''); setResult(null); setRemaining(seconds); setStartedAt(Date.now());
   };
 
-  const methodSelector = <label className="grid min-w-0 gap-1 text-xs text-muted-foreground">Method<select className="h-8 min-w-0 w-full rounded-lg border bg-background px-2 text-sm text-foreground" value={methodChoice} onChange={(e) => { const v = e.target.value as MethodChoice; setMethodChoice(v); setLearnStep(0); remember(v); }}>{METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}{mode !== 'learn' && <option value="mixed">Mixed</option>}</select></label>;
+  const lessonUrl = { urquhart: 'https://www.youtube.com/watch?v=_jrZv_kIBEk', '321': 'https://www.youtube.com/watch?v=wAUdNrw-DYc', 'criss-cross': 'https://backgammon101.com/criss-cross-pip-count/' }[method];
+  const methodSelector = <div className="grid min-w-0 gap-1"><label className="grid min-w-0 gap-1 text-xs text-muted-foreground">Method<select className="h-8 min-w-0 w-full rounded-lg border bg-background px-2 text-sm text-foreground" value={methodChoice} onChange={(e) => { const v = e.target.value as MethodChoice; setMethodChoice(v); setLearnStep(0); remember(v); }}>{METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}{mode !== 'learn' && <option value="mixed">Mixed</option>}</select></label>{mode === 'learn' && <a href={lessonUrl} target="_blank" rel="noopener noreferrer" className="py-1 text-xs text-primary underline underline-offset-4">{method === 'criss-cross' ? 'Read walkthrough' : 'Watch video'} ↗</a>}</div>;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5">
