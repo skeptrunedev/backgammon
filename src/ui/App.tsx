@@ -124,7 +124,7 @@ function AppDrawer() {
             className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[80vw] flex-col gap-5 border-r border-white/10 bg-card p-4 pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl animate-in slide-in-from-left duration-200">
+          <div className="absolute inset-y-0 left-0 flex min-h-0 w-72 max-w-[80vw] flex-col gap-5 overflow-y-auto overscroll-contain border-r border-white/10 bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] shadow-2xl animate-in slide-in-from-left duration-200">
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-2">
                 <span aria-hidden className="text-lg leading-none text-primary">
