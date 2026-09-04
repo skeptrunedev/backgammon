@@ -1,4 +1,4 @@
-import { useId, useRef, useLayoutEffect } from 'react';
+import { useId, useRef, useLayoutEffect, type ReactNode } from 'react';
 import type { BoardState, CheckerHop } from '../engine/types';
 import { BAR, OFF } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
@@ -121,6 +121,7 @@ interface Props {
   onPointClick?: (p: number) => void;
   showDice?: boolean;
   showLabels?: boolean;
+  overlay?: ReactNode;
   mini?: boolean;
   /** Fill the parent box exactly (parent is sized to the board's aspect). */
   fill?: boolean;
@@ -139,6 +140,7 @@ export default function Board({
   onPointClick,
   showDice = true,
   showLabels = true,
+  overlay,
   mini = false,
   fill = false,
   wide = false,
@@ -517,6 +519,7 @@ export default function Board({
       ))}
       {renderDice()}
       {showLabels && renderCube()}
+      {overlay}
     </svg>
   );
 }
