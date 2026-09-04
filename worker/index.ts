@@ -30,6 +30,41 @@ interface TrendsRow {
   updated_at: number;
 }
 
+interface TrainingRow {
+  data: string;
+}
+
+type Timestamped = { updatedAt: number };
+type TrainingWire = {
+  version: 1;
+  reviews: Record<string, Timestamped>;
+  settings: Timestamped;
+  pipPreferences: Timestamped;
+  pipStats: Record<string, Timestamped>;
+};
+
+function mergeTimestamped<T extends Timestamped>(a: T, b: T): T {
+  return b.updatedAt > a.updatedAt ? b : a;
+}
+
+function mergeTrainingWire(a: TrainingWire, b: TrainingWire): TrainingWire {
+  const reviews = { ...a.reviews };
+  for (const [id, item] of Object.entries(b.reviews)) {
+    reviews[id] = reviews[id] ? mergeTimestamped(reviews[id], item) : item;
+  }
+  const pipStats = { ...a.pipStats };
+  for (const [method, item] of Object.entries(b.pipStats)) {
+    pipStats[method] = pipStats[method] ? mergeTimestamped(pipStats[method], item) : item;
+  }
+  return {
+    version: 1,
+    reviews,
+    settings: mergeTimestamped(a.settings, b.settings),
+    pipPreferences: mergeTimestamped(a.pipPreferences, b.pipPreferences),
+    pipStats,
+  };
+}
+
 // ---- AES-256-GCM encryption of users' Anthropic keys, at rest in D1 ----
 function b64encode(bytes: Uint8Array): string {
   let s = '';
@@ -349,6 +384,45 @@ app.put('/api/trends', async (c) => {
   )
     .bind(user.id, body.sig, body.text, Date.now())
     .run();
+  return c.json({ ok: true });
+});
+
+// ---- Offline-first training progress (client merges per-item timestamps) ----
+app.get('/api/training', async (c) => {
+  const user = await getSessionUser(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const row = await c.env.DB.prepare('SELECT data FROM training_state WHERE user_id = ?1')
+    .bind(user.id)
+    .first<TrainingRow>();
+  return c.json({ state: row ? JSON.parse(row.data) : null });
+});
+
+app.put('/api/training', async (c) => {
+  const user = await getSessionUser(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const raw = await c.req.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+    return c.json({ error: 'Body too large' }, 413);
+  }
+  let body: TrainingWire;
+  try {
+    body = JSON.parse(raw) as TrainingWire;
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400);
+  }
+  if (!body || body.version !== 1 || typeof body.reviews !== 'object' ||
+      !body.settings || !body.pipPreferences || typeof body.pipStats !== 'object') {
+    return c.json({ error: 'Invalid TrainingState' }, 400);
+  }
+  const existing = await c.env.DB.prepare('SELECT data FROM training_state WHERE user_id = ?1')
+    .bind(user.id)
+    .first<TrainingRow>();
+  const merged = existing ? mergeTrainingWire(JSON.parse(existing.data) as TrainingWire, body) : body;
+  const data = JSON.stringify(merged);
+  await c.env.DB.prepare(
+    `INSERT INTO training_state (user_id, data, updated_at) VALUES (?1, ?2, ?3)
+     ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
+  ).bind(user.id, data, Date.now()).run();
   return c.json({ ok: true });
 });
 

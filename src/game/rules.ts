@@ -113,6 +113,23 @@ export function continuations(
   return nexts;
 }
 
+export function preferredHop(
+  hops: CheckerHop[],
+  dice: [number, number],
+  preferredDie: 0 | 1,
+): CheckerHop | undefined {
+  const orderedDice = preferredDie === 0 ? dice : [dice[1], dice[0]];
+  for (const die of orderedDice) {
+    const hop = hops.find((candidate) =>
+      candidate.to === OFF
+        ? die >= candidate.from
+        : candidate.from - candidate.to === die,
+    );
+    if (hop) return hop;
+  }
+  return hops[0];
+}
+
 export function isComplete(
   sequences: CheckerHop[][],
   played: CheckerHop[],

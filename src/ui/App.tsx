@@ -4,12 +4,15 @@ import HomeScreen from './HomeScreen';
 import PlayScreen from './PlayScreen';
 import AnalysisScreen from './AnalysisScreen';
 import TrendsScreen from './TrendsScreen';
+import TrainingScreen from './TrainingScreen';
+import PipCountScreen from './PipCountScreen';
 import AuthDialog from './AuthDialog';
 import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
+import { syncTrainingState } from '../game/training';
 import { getSession } from '../game/session';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Plus, TrendingUp, LogIn, LogOut } from 'lucide-react';
+import { Menu, X, Home, Plus, TrendingUp, LogIn, LogOut, Dumbbell, Calculator } from 'lucide-react';
 import { useForcedLandscape } from './useForcedLandscape';
 
 export default function App() {
@@ -39,6 +42,8 @@ function Chrome() {
             <Route path="/play/:matchId" element={<PlayScreen />} />
             <Route path="/match/:id" element={<AnalysisScreen />} />
             <Route path="/trends" element={<TrendsScreen />} />
+            <Route path="/training" element={<TrainingScreen />} />
+            <Route path="/pip" element={<PipCountScreen />} />
           </Routes>
         </div>
       </div>
@@ -56,6 +61,8 @@ function Chrome() {
           <Route path="/play/:matchId" element={<PlayScreen />} />
           <Route path="/match/:id" element={<AnalysisScreen />} />
           <Route path="/trends" element={<TrendsScreen />} />
+          <Route path="/training" element={<TrainingScreen />} />
+          <Route path="/pip" element={<PipCountScreen />} />
         </Routes>
       </div>
     </div>
@@ -66,7 +73,10 @@ function SessionPuller() {
   const { user } = useUser();
   const userId = user?.id ?? null;
   useEffect(() => {
-    if (userId) void pullMatches();
+    if (userId) {
+      void pullMatches();
+      void syncTrainingState();
+    }
   }, [userId]);
   return null;
 }
@@ -158,6 +168,24 @@ function AppDrawer() {
             >
               <TrendingUp className="size-4" />
               Trends
+            </Link>
+
+            <Link
+              to="/training"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              <Dumbbell className="size-4" />
+              Training
+            </Link>
+
+            <Link
+              to="/pip"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+            >
+              <Calculator className="size-4" />
+              Pip counting
             </Link>
 
             <Separator />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { legalSequences, continuations, isComplete, pipCounts, dieUsage, deadDice } from './rules';
+import { legalSequences, continuations, preferredHop, isComplete, pipCounts, dieUsage, deadDice } from './rules';
 import { parseMoveString, applyHopsToPoints, sameCheckerPlay, hopsToMoveCommand, hopsToNotation, applyOppHop } from '../engine/parse';
 import { BAR, OFF } from '../engine/types';
 
@@ -88,6 +88,50 @@ describe('continuations', () => {
     const first = seqs[0][0];
     const nexts = continuations(seqs, [first]);
     expect(nexts.length).toBeGreaterThan(0);
+  });
+});
+
+describe('preferredHop', () => {
+  const pointThreeChoices = [
+    { from: 3, to: OFF },
+    { from: 3, to: 2 },
+  ];
+
+  it('uses a preferred oversized die to bear off', () => {
+    expect(preferredHop(pointThreeChoices, [6, 1], 0)).toEqual({ from: 3, to: OFF });
+  });
+
+  it('uses the preferred lower die for a normal move', () => {
+    expect(preferredHop(pointThreeChoices, [6, 1], 1)).toEqual({ from: 3, to: 2 });
+  });
+
+  it('preserves displayed die order and explicit preference', () => {
+    expect(preferredHop(pointThreeChoices, [1, 6], 0)).toEqual({ from: 3, to: 2 });
+    expect(preferredHop(pointThreeChoices, [1, 6], 1)).toEqual({ from: 3, to: OFF });
+  });
+
+  it('selects ordinary moves by exact distance', () => {
+    const hops = [{ from: 8, to: 2 }, { from: 8, to: 7 }];
+    expect(preferredHop(hops, [6, 1], 0)).toEqual({ from: 8, to: 2 });
+    expect(preferredHop(hops, [6, 1], 1)).toEqual({ from: 8, to: 7 });
+  });
+
+  it('only selects from legal continuations', () => {
+    const p = new Array(26).fill(0);
+    p[6] = 1;
+    p[3] = 2;
+    p[1] = 12;
+    const next = continuations(legalSequences(p, [5, 1]), []);
+    expect(next).not.toContainEqual({ from: 3, to: OFF });
+    expect(preferredHop(next.filter((hop) => hop.from === 3), [5, 1], 0)).toEqual({
+      from: 3,
+      to: 2,
+    });
+  });
+
+  it('handles doubles without changing the legal continuation', () => {
+    const hops = [{ from: 6, to: OFF }];
+    expect(preferredHop(hops, [6, 6], 1)).toEqual(hops[0]);
   });
 });
 

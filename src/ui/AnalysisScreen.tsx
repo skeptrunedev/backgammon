@@ -4,6 +4,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   DownloadIcon,
+  DumbbellIcon,
   LoaderCircleIcon,
   SparklesIcon,
 } from 'lucide-react';
@@ -60,16 +61,16 @@ function fmtLoss(loss: number): string {
   return `${loss.toFixed(3)} (${Math.round(loss * 1000)} mEMG)`;
 }
 
-function SeverityBadge({ loss }: { loss: number }) {
+export function SeverityBadge({ loss }: { loss: number }) {
   const sev = severity(loss);
   if (sev === 'blunder') return <Badge variant="destructive">Blunder</Badge>;
   if (sev === 'error')
     return (
-      <Badge className="border-transparent bg-orange-500/15 text-orange-400">Error</Badge>
+      <Badge className="border-transparent bg-orange-500/15 text-orange-400">Mistake</Badge>
     );
   if (sev === 'dubious')
     return (
-      <Badge className="border-transparent bg-yellow-500/15 text-yellow-400">Dubious</Badge>
+      <Badge className="border-transparent bg-yellow-500/15 text-yellow-400">Inaccuracy</Badge>
     );
   return <Badge variant="secondary">OK</Badge>;
 }
@@ -147,25 +148,35 @@ export default function AnalysisScreen() {
                 })}
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!rec.matText}
-              onClick={() =>
-                rec.matText && downloadText(matFilename(rec.startedAt), rec.matText)
-              }
-            >
-              <DownloadIcon data-icon="inline-start" />
-              Download .mat
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {s.blunder + s.error + s.dubious > 0 && (
+                <Button asChild size="sm">
+                  <Link to={`/training?match=${encodeURIComponent(id)}`}>
+                    <DumbbellIcon data-icon="inline-start" />
+                    Practice {s.blunder + s.error + s.dubious} positions
+                  </Link>
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!rec.matText}
+                onClick={() =>
+                  rec.matText && downloadText(matFilename(rec.startedAt), rec.matText)
+                }
+              >
+                <DownloadIcon data-icon="inline-start" />
+                Download .mat
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
             <Stat label="Decisions" value={String(s.decisions)} />
             <Stat label="Blunders (≥ 0.08)" value={String(s.blunder)} accent="text-destructive" />
-            <Stat label="Errors (≥ 0.04)" value={String(s.error)} accent="text-orange-400" />
-            <Stat label="Dubious (≥ 0.02)" value={String(s.dubious)} accent="text-yellow-400" />
+            <Stat label="Mistakes (≥ 0.04)" value={String(s.error)} accent="text-orange-400" />
+            <Stat label="Inaccuracies (≥ 0.02)" value={String(s.dubious)} accent="text-yellow-400" />
             <Stat label="Total equity lost" value={fmtLoss(s.totalLoss)} />
             <Stat label="Avg loss / decision" value={fmtLoss(s.perDecision)} />
           </dl>
@@ -216,7 +227,7 @@ function safeHops(moveStr: string): CheckerHop[] | null {
 
 // Board for a checker decision with a toggle to play the move on the board:
 // the starting position, the move you made, or the engine's best move.
-function CheckerBoardPreview({ d }: { d: CheckerDecision }) {
+export function CheckerBoardPreview({ d }: { d: CheckerDecision }) {
   const [view, setView] = useState<'before' | 'played' | 'best'>('before');
   const [board, setBoard] = useState<BoardState>(d.snapshot);
   const playedHops = useMemo(() => safeHops(d.playedMove), [d]);
@@ -337,7 +348,7 @@ function DecisionCard({
   );
 }
 
-function CheckerDetails({ d }: { d: CheckerDecision }) {
+export function CheckerDetails({ d }: { d: CheckerDecision }) {
   const [showHints, setShowHints] = useState(false);
   return (
     <div className="flex flex-col gap-2 text-sm">
@@ -415,7 +426,7 @@ function CheckerDetails({ d }: { d: CheckerDecision }) {
   );
 }
 
-function CubeDetails({ d }: { d: CubeDecision }) {
+export function CubeDetails({ d }: { d: CubeDecision }) {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p>

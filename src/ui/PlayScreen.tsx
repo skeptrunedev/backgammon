@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Board, { boardMetrics } from './Board';
 import { useSession } from './useSession';
 import { fetchMatch } from '../game/sync';
-import { pipCounts } from '../game/rules';
+import { pipCounts, preferredHop } from '../game/rules';
 import { downloadText, matFilename } from './download';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Plus, TrendingUp, Flag, LogOut, Trophy, Target, Maximize, Minimize } from 'lucide-react';
+import { Menu, X, Home, Plus, TrendingUp, Flag, LogOut, Trophy, Target, Maximize, Minimize, Dumbbell, Calculator } from 'lucide-react';
 import { useFullscreen } from './useFullscreen';
 
 function Kbd({ children }: { children: ReactNode }) {
@@ -31,7 +31,7 @@ export default function PlayScreen() {
   const { session, state } = useSession();
   const { matchId } = useParams();
   const navigate = useNavigate();
-  const [firstDie, setFirstDie] = useState(0);
+  const [firstDie, setFirstDie] = useState<0 | 1>(0);
   const [showResign, setShowResign] = useState(false);
   const [showForfeit, setShowForfeit] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -218,9 +218,6 @@ export default function PlayScreen() {
   const pips = pipCounts(b.points);
   const sources = [...new Set(conts.map((h) => h.from))];
 
-  const hopDist = (h: { from: number; to: number }) =>
-    h.from - (h.to === 0 ? 0 : h.to);
-
   // Single click: play the checker on `p` using the preferred die if it's
   // legal from there, otherwise the other die. (Combined moves are made with
   // successive clicks, since continuations recompute after each hop.)
@@ -228,15 +225,8 @@ export default function PlayScreen() {
     if (state.phase !== 'moving') return;
     const fromP = conts.filter((h) => h.from === p);
     if (fromP.length === 0) return;
-    const order = firstDie === 0 ? [b.dice[0], b.dice[1]] : [b.dice[1], b.dice[0]];
-    for (const d of order) {
-      const hop = fromP.find((h) => hopDist(h) === d);
-      if (hop) {
-        session.addHop(hop);
-        return;
-      }
-    }
-    session.addHop(fromP[0]);
+    const hop = preferredHop(fromP, b.dice, firstDie);
+    if (hop) session.addHop(hop);
   };
 
   const onDieClick = () => setFirstDie((f) => (f === 0 ? 1 : 0));
@@ -328,6 +318,30 @@ export default function PlayScreen() {
               >
                 <TrendingUp className="size-4" />
                 Trends
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  navigate('/training');
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                <Dumbbell className="size-4" />
+                Training
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setDrawerOpen(false);
+                  navigate('/pip');
+                }}
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+              >
+                <Calculator className="size-4" />
+                Pip counting
               </button>
 
               {/* Fullscreen + landscape lock (YouTube-style): real landscape even

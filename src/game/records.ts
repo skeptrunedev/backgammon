@@ -7,6 +7,8 @@ export interface CheckerDecision {
   snapshot: BoardState;
   dice: [number, number];
   hints: HintMove[];
+  /** Compact future-proof grading data. Optional for existing match records. */
+  acceptableMoves?: { move: string; equity: number }[];
   playedMove: string;
   playedEquity: number | null;
   playedRank: number | null;
@@ -119,6 +121,9 @@ export function buildCheckerDecision(
     snapshot,
     dice: snapshot.dice,
     hints: hints.slice(0, 8),
+    acceptableMoves: hints
+      .filter((h) => best && bestEquity - h.equity < DUBIOUS)
+      .map(({ move, equity }) => ({ move, equity })),
     playedMove,
     playedEquity: playedHints ? playedHints.equity : null,
     playedRank: playedHints ? playedHints.rank : null,
