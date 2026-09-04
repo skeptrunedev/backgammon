@@ -120,6 +120,7 @@ interface Props {
   dests?: number[];
   onPointClick?: (p: number) => void;
   showDice?: boolean;
+  showLabels?: boolean;
   mini?: boolean;
   /** Fill the parent box exactly (parent is sized to the board's aspect). */
   fill?: boolean;
@@ -137,6 +138,7 @@ export default function Board({
   dests = [],
   onPointClick,
   showDice = true,
+  showLabels = true,
   mini = false,
   fill = false,
   wide = false,
@@ -182,7 +184,7 @@ export default function Board({
           fill={fill}
           opacity={0.95}
         />
-        {!mini && (
+        {!mini && showLabels && (
           <text x={x + COL_W / 2} y={top ? FRAME - 6 : H - FRAME + 16} className="pt-label" textAnchor="middle">
             {p}
           </text>
@@ -514,7 +516,7 @@ export default function Board({
         </text>
       ))}
       {renderDice()}
-      {renderCube()}
+      {showLabels && renderCube()}
     </svg>
   );
 }
