@@ -6,6 +6,7 @@ import AnalysisScreen from './AnalysisScreen';
 import TrendsScreen from './TrendsScreen';
 import TrainingScreen from './TrainingScreen';
 import PipCountScreen from './PipCountScreen';
+import PrivacyScreen from './PrivacyScreen';
 import AuthDialog from './AuthDialog';
 import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
@@ -44,6 +45,7 @@ function Chrome() {
             <Route path="/trends" element={<TrendsScreen />} />
             <Route path="/training" element={<TrainingScreen />} />
             <Route path="/pip" element={<PipCountScreen />} />
+            <Route path="/privacy" element={<PrivacyScreen />} />
           </Routes>
         </div>
       </div>
@@ -63,6 +65,7 @@ function Chrome() {
           <Route path="/trends" element={<TrendsScreen />} />
           <Route path="/training" element={<TrainingScreen />} />
           <Route path="/pip" element={<PipCountScreen />} />
+          <Route path="/privacy" element={<PrivacyScreen />} />
         </Routes>
       </div>
     </div>
@@ -219,6 +222,14 @@ function AppDrawer() {
                 Sign in
               </button>
             )}
+
+            <Link
+              to="/privacy"
+              onClick={() => setOpen(false)}
+              className="mt-auto px-3 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Privacy policy
+            </Link>
           </div>
         </div>
       )}
