@@ -26,7 +26,8 @@
       },
       "ios": {
         "credentialsSource": "local"
-      }
+      },
+      "autoIncrement": true
     },
     "simulator": {
       "ios": {
