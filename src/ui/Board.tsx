@@ -3,6 +3,7 @@ import Svg, { Rect, Polygon, Circle, G, Image as SvgImage, Text as SvgText } fro
 import type { BoardState, CheckerHop } from '../engine/types';
 import { BAR } from '../engine/types';
 import { applyHopsToPoints } from '../engine/parse';
+import { dieUsage, deadDice } from '../game/rules';
 
 // Sprites (same assets as the web app) so the board reads identically.
 const WOOD = require('../../assets/sprites/wood-dark.jpg');
@@ -12,20 +13,71 @@ const CHECKER_DARK = require('../../assets/sprites/checker-dark.png');
 const DIE_LIGHT = require('../../assets/sprites/die-light.png');
 const DIE_DARK = require('../../assets/sprites/die-dark.png');
 
-// Geometry ported from the web board (default, non-wide).
-const W = 1320;
-const H = 960;
-const FRAME = 24;
-const TRAY_W = 90;
-const BAR_W = 84;
-const COL_W = (W - FRAME * 2 - TRAY_W - BAR_W) / 12;
-const R = Math.min(COL_W / 2 - 6, 40);
-const POINT_H = 340;
-const boardLeft = FRAME;
-const barLeft = boardLeft + COL_W * 6;
-const barRight = barLeft + BAR_W;
-const trayLeft = W - FRAME - TRAY_W;
-const STACK_STEP = Math.min(R * 2 - 2, (H / 2 - FRAME - 2 * R - 4) / 4);
+/**
+ * Board geometry, ported from the web board. Two modes:
+ *  - `default` (1320×960, ratio ≈ 1.375): tablets and other roomy screens.
+ *  - `wide` (820 tall, at least 2:1): landscape phones. A shorter, wider board
+ *    whose width follows the screen's aspect so it fills the full width;
+ *    checkers stay circular because the board is re-proportioned, not
+ *    stretched.
+ */
+interface BoardGeom {
+  W: number;
+  H: number;
+  FRAME: number;
+  TRAY_W: number;
+  BAR_W: number;
+  COL_W: number;
+  R: number;
+  POINT_H: number;
+  STACK_STEP: number;
+  boardLeft: number;
+  barLeft: number;
+  barRight: number;
+  trayLeft: number;
+}
+
+function geom(wide: boolean, aspect = 2): BoardGeom {
+  const W = wide ? Math.round(820 * Math.min(Math.max(aspect, 2), 2.4)) : 1320;
+  const H = wide ? 820 : 960;
+  const FRAME = wide ? 22 : 24;
+  const TRAY_W = wide ? 100 : 90;
+  const BAR_W = wide ? 86 : 84;
+  const COL_W = (W - FRAME * 2 - TRAY_W - BAR_W) / 12;
+  const R = Math.min(COL_W / 2 - 6, wide ? 52 : 40);
+  const POINT_H = wide ? 300 : 340;
+  // Checkers overlap when stacked so a stack of five fits half the board.
+  const STACK_STEP = Math.min(R * 2 - 2, (H / 2 - FRAME - 2 * R - 4) / 4);
+  const boardLeft = FRAME;
+  const barLeft = boardLeft + COL_W * 6;
+  const barRight = barLeft + BAR_W;
+  const trayLeft = W - FRAME - TRAY_W;
+  return { W, H, FRAME, TRAY_W, BAR_W, COL_W, R, POINT_H, STACK_STEP, boardLeft, barLeft, barRight, trayLeft };
+}
+
+const DEFAULT_GEOM = geom(false);
+
+/** Layout metrics callers need to size the board and place overlays on it. */
+export interface BoardMetrics {
+  /** Board intrinsic dimensions (viewBox units). */
+  w: number;
+  h: number;
+  /** Horizontal center of the player's dice, as a fraction of board width. */
+  diceCenterX: number;
+  /** Anchor just below the dice (dice span H/2±30), as a fraction of board height. */
+  belowDiceY: number;
+}
+
+/** `aspect` is the width/height the board should fill (wide mode only). */
+export function boardMetrics(wide = false, aspect = 2): BoardMetrics {
+  const g = wide ? geom(true, aspect) : DEFAULT_GEOM;
+  return {
+    w: g.W,
+    h: g.H,
+    diceCenterX: (g.barRight + g.trayLeft) / 2 / g.W,
+    belowDiceY: (g.H / 2 + 50) / g.H,
+  };
+}
 
 // Palette (web CSS vars converted from oklch to sRGB).
 const C = {
@@ -41,13 +93,14 @@ const C = {
   countOpp: '#ece4d0',
   pipLight: '#3f3828', // pips on the cream die
   pipDark: '#ece4d0', // pips on the dark die
+  dieUsed: 'rgba(28,24,20,0.72)', // consumed portion of a die
 };
 
-function pointX(p: number): number {
-  if (p >= 1 && p <= 6) return barRight + (6 - p) * COL_W;
-  if (p >= 7 && p <= 12) return boardLeft + (12 - p) * COL_W;
-  if (p >= 13 && p <= 18) return boardLeft + (p - 13) * COL_W;
-  return barRight + (p - 19) * COL_W;
+function pointX(g: BoardGeom, p: number): number {
+  if (p >= 1 && p <= 6) return g.barRight + (6 - p) * g.COL_W;
+  if (p >= 7 && p <= 12) return g.boardLeft + (12 - p) * g.COL_W;
+  if (p >= 13 && p <= 18) return g.boardLeft + (p - 13) * g.COL_W;
+  return g.barRight + (p - 19) * g.COL_W;
 }
 const isTop = (p: number) => p >= 13;
 
@@ -60,13 +113,14 @@ const PIPS: Record<number, [number, number][]> = {
   6: [[16, 16], [44, 16], [16, 30], [44, 30], [16, 44], [44, 44]],
 };
 
-function Die({ x, y, value, mine }: { x: number; y: number; value: number; mine: boolean }) {
+function Die({ x, y, value, mine, used, onPress }: { x: number; y: number; value: number; mine: boolean; used: number; onPress?: () => void }) {
   return (
-    <G x={x} y={y}>
+    <G x={x} y={y} onPress={onPress}>
       <SvgImage href={mine ? DIE_LIGHT : DIE_DARK} x={0} y={0} width={60} height={60} preserveAspectRatio="xMidYMid meet" />
       {(PIPS[value] ?? []).map(([px, py], i) => (
         <Circle key={i} cx={px} cy={py} r={5.5} fill={mine ? C.pipLight : C.pipDark} />
       ))}
+      {used > 0 && <Rect width={60} height={60 * used} y={60 - 60 * used} rx={12} fill={C.dieUsed} />}
     </G>
   );
 }
@@ -76,12 +130,27 @@ export function Board({
   pendingHops = [],
   sources = [],
   onPointClick,
+  activeDie = 0,
+  onDieClick,
+  wide = false,
+  aspect = 2,
 }: {
   board: BoardState;
   pendingHops?: CheckerHop[];
   sources?: number[];
   onPointClick?: (p: number) => void;
+  /** Which of the player's dice is played first; it's drawn in the left slot. */
+  activeDie?: number;
+  /** Tapping one of the player's dice flips which die is played first. */
+  onDieClick?: (i: number) => void;
+  /** Landscape-phone layout: a shorter, wider board (see `geom`). */
+  wide?: boolean;
+  /** Width/height of the space the wide board fills. */
+  aspect?: number;
 }) {
+  const g = wide ? geom(true, aspect) : DEFAULT_GEOM;
+  const { W, H, FRAME, TRAY_W, BAR_W, COL_W, R, POINT_H, STACK_STEP, boardLeft, barLeft, barRight, trayLeft } = g;
+
   // Show the in-progress move as a preview (same as the web board).
   const pts = applyHopsToPoints(board.points, pendingHops);
 
@@ -94,7 +163,7 @@ export function Board({
     const mine = v > 0;
     const n = Math.abs(v);
     const top = isTop(p);
-    const cx = pointX(p) + COL_W / 2;
+    const cx = pointX(g, p) + COL_W / 2;
     for (let i = 0; i < Math.min(n, 5); i++) {
       const cy = top ? FRAME + R + 4 + i * STACK_STEP : H - FRAME - R - 4 - i * STACK_STEP;
       checkers.push(
@@ -132,7 +201,7 @@ export function Board({
 
   // Bear-off pockets (edge-on capsules).
   const CAP_W = TRAY_W - 22;
-  const CAP_H = 20;
+  const CAP_H = wide ? 22 : 20;
   const OFF_STEP = Math.min(CAP_H + 2, (H / 2 - FRAME - 14 - CAP_H) / 14);
   const trayCX = trayLeft + TRAY_W / 2;
   const pockets: ReactNode[] = [];
@@ -145,6 +214,13 @@ export function Board({
   const showDice = board.dice[0] !== 0;
   const mover = board.turn === 1;
   const diceCx = mover ? (barRight + trayLeft) / 2 : (boardLeft + barLeft) / 2;
+  const usage = mover ? dieUsage(board.dice, pendingHops) : [0, 0];
+  const dead = mover ? deadDice(board.points, board.dice) : [false, false];
+  const isDouble = board.dice[0] === board.dice[1];
+  const diceInteractive = mover && !!onDieClick && !isDouble;
+  // The leading die sits in the left slot, so tapping to reorder visibly swaps
+  // the dice (same as the web board).
+  const diceOrder = mover && activeDie === 1 ? [1, 0] : [0, 1];
 
   // Cube at rest on the bar rail.
   const CUBE = 64;
@@ -162,7 +238,7 @@ export function Board({
       {/* points */}
       {Array.from({ length: 24 }, (_, i) => {
         const p = i + 1;
-        const x = pointX(p);
+        const x = pointX(g, p);
         const top = isTop(p);
         const baseY = top ? FRAME : H - FRAME;
         const tipY = top ? FRAME + POINT_H : H - FRAME - POINT_H;
@@ -187,13 +263,6 @@ export function Board({
       {barNodes}
       {counts}
 
-      {showDice && (
-        <G>
-          <Die x={diceCx - 66} y={H / 2 - 30} value={board.dice[0]} mine={mover} />
-          <Die x={diceCx + 6} y={H / 2 - 30} value={board.dice[1]} mine={mover} />
-        </G>
-      )}
-
       {showCube && (
         <G x={barCx - CUBE / 2} y={H / 2 - CUBE / 2}>
           <Rect width={CUBE} height={CUBE} rx={10} fill={C.cube} stroke={C.cubeStroke} strokeWidth={2} />
@@ -207,7 +276,7 @@ export function Board({
       {sources.map((p) => {
         if (p === BAR) return <Circle key={`hl${p}`} cx={barCx} cy={H / 2} r={R + 6} fill="none" stroke="#d9b24a" strokeWidth={4} opacity={0.9} />;
         const top = isTop(p);
-        const cx = pointX(p) + COL_W / 2;
+        const cx = pointX(g, p) + COL_W / 2;
         const topIdx = Math.max(Math.min(Math.abs(pts[p] || 0), 5) - 1, 0);
         const cy = top ? FRAME + R + 4 + topIdx * STACK_STEP : H - FRAME - R - 4 - topIdx * STACK_STEP;
         return <Circle key={`hl${p}`} cx={cx} cy={cy} r={R + 5} fill="none" stroke="#d9b24a" strokeWidth={4} opacity={0.9} />;
@@ -217,7 +286,7 @@ export function Board({
       {onPointClick &&
         Array.from({ length: 24 }, (_, i) => {
           const p = i + 1;
-          const x = pointX(p);
+          const x = pointX(g, p);
           const top = isTop(p);
           return (
             <Rect key={`hz${p}`} x={x} y={top ? FRAME : H / 2} width={COL_W} height={H / 2 - FRAME} fill="#000000" fillOpacity={0.001} onPress={() => onPointClick(p)} />
@@ -225,6 +294,23 @@ export function Board({
         })}
       {onPointClick && (
         <Rect x={barLeft} y={FRAME} width={BAR_W} height={H - FRAME * 2} fill="#000000" fillOpacity={0.001} onPress={() => onPointClick(BAR)} />
+      )}
+
+      {/* dice last so taps on them win over the point tap zones */}
+      {showDice && (
+        <G>
+          {diceOrder.map((di, slot) => (
+            <Die
+              key={di}
+              x={diceCx - 70 + slot * 80}
+              y={H / 2 - 30}
+              value={board.dice[di]}
+              mine={mover}
+              used={dead[di] ? 1 : isDouble ? usage[di] / 2 : usage[di]}
+              onPress={diceInteractive && !dead[di] ? () => onDieClick!(di) : undefined}
+            />
+          ))}
+        </G>
       )}
     </Svg>
   );
