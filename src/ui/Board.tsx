@@ -16,7 +16,7 @@ const DIE_DARK = require('../../assets/sprites/die-dark.png');
 /**
  * Board geometry, ported from the web board. Two modes:
  *  - `default` (1320×960, ratio ≈ 1.375): tablets and other roomy screens.
- *  - `wide` (820 tall, at least 2:1): landscape phones. A shorter, wider board
+ *  - `wide` (820 tall, 1.6:1 to 2.4:1): landscape phones. A shorter, wider board
  *    whose width follows the screen's aspect so it fills the full width;
  *    checkers stay circular because the board is re-proportioned, not
  *    stretched.
@@ -38,7 +38,7 @@ interface BoardGeom {
 }
 
 function geom(wide: boolean, aspect = 2): BoardGeom {
-  const W = wide ? Math.round(820 * Math.min(Math.max(aspect, 2), 2.4)) : 1320;
+  const W = wide ? Math.round(820 * Math.min(Math.max(aspect, 1.6), 2.4)) : 1320;
   const H = wide ? 820 : 960;
   const FRAME = wide ? 22 : 24;
   const TRAY_W = wide ? 100 : 90;

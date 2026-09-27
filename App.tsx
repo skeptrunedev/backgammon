@@ -43,10 +43,10 @@ export default function App() {
     setFirstDie(0);
   }, [rollKey]);
 
-  // Landscape phones (~2.2:1) get the web app's wide board so it fills the
+  // Landscape phones (16:9 and wider) get the web app's wide board so it fills the
   // screen width; tablets keep the classic board.
   const win = useWindowDimensions();
-  const wide = win.width / win.height >= 1.8;
+  const wide = win.width / win.height >= 1.6;
   // Contain the board in the arena, preserving its aspect. In wide mode the
   // board is proportioned to the arena itself, so it fills the full width.
   const [arena, setArena] = useState<{ w: number; h: number } | null>(null);
