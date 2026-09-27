@@ -62,7 +62,24 @@ export default function App() {
 
       <View style={styles.controls}>
         {state.phase === 'awaitRoll' && (
-          <Btn label="Roll" primary onPress={() => void session.roll()} disabled={state.thinking} />
+          <>
+            {state.canDouble && (
+              <Btn label="Double" onPress={() => void session.double()} disabled={state.thinking} />
+            )}
+            <Btn label="Roll" primary onPress={() => void session.roll()} disabled={state.thinking} />
+          </>
+        )}
+        {state.phase === 'doubleOffered' && (
+          <>
+            <Btn label="Pass double" onPress={() => void session.pass()} disabled={state.thinking} />
+            <Btn label="Take double" primary onPress={() => void session.take()} disabled={state.thinking} />
+          </>
+        )}
+        {state.phase === 'resignOffered' && (
+          <>
+            <Btn label="Reject resignation" onPress={() => void session.declineResign()} disabled={state.thinking} />
+            <Btn label="Accept resignation" primary onPress={() => void session.acceptResign()} disabled={state.thinking} />
+          </>
         )}
         {state.phase === 'moving' && (
           <>
