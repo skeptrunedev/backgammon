@@ -8,7 +8,6 @@ import TrainingScreen from './TrainingScreen';
 import PipCountScreen from './PipCountScreen';
 import PrivacyScreen from './PrivacyScreen';
 import AuthDialog from './AuthDialog';
-import CopyPromptButton from './CopyPromptButton';
 import { authClient, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
 import { syncTrainingState } from '../game/training';
@@ -58,7 +57,6 @@ function Chrome() {
     <div className="relative flex min-h-dvh flex-col">
       <SessionPuller />
       <AppDrawer />
-      <CopyPromptButton variant="floating" />
       <div className="mx-auto w-full max-w-6xl flex-1 px-4 pb-6 pt-16 sm:px-6">
         <Routes>
           <Route path="/" element={<HomeScreen />} />

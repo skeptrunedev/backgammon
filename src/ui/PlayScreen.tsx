@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { Menu, X, Home, Plus, TrendingUp, Flag, LogOut, Trophy, Target, Maximize, Minimize, Dumbbell, Calculator } from 'lucide-react';
-import CopyPromptButton from './CopyPromptButton';
 import { useFullscreen } from './useFullscreen';
 
 function Kbd({ children }: { children: ReactNode }) {
@@ -344,8 +343,6 @@ export default function PlayScreen() {
                 <Calculator className="size-4" />
                 Pip counting
               </button>
-
-              <CopyPromptButton variant="menu" onCopied={() => setDrawerOpen(false)} />
 
               {/* Fullscreen + landscape lock (YouTube-style): real landscape even
                   with the phone's rotation locked. No-ops where unsupported. */}
