@@ -198,6 +198,19 @@ export function Board({
     barNodes.push(<SvgImage key={`mb${i}`} href={CHECKER_LIGHT} x={barCx - R} y={H / 2 + barGap + i * STACK_STEP - R} width={R * 2} height={R * 2} />);
   for (let i = 0; i < Math.min(oppBar, 4); i++)
     barNodes.push(<SvgImage key={`ob${i}`} href={CHECKER_DARK} x={barCx - R} y={H / 2 - barGap - i * STACK_STEP - R} width={R * 2} height={R * 2} />);
+  // Stacks past four show their count, like the points (same as the web board).
+  if (myBar > 4)
+    counts.push(
+      <SvgText key="nmb" x={barCx} y={H / 2 + barGap + 14} fontSize={40} fontWeight="700" fill={C.countMe} textAnchor="middle">
+        {myBar}
+      </SvgText>,
+    );
+  if (oppBar > 4)
+    counts.push(
+      <SvgText key="nob" x={barCx} y={H / 2 - barGap + 14} fontSize={40} fontWeight="700" fill={C.countOpp} textAnchor="middle">
+        {oppBar}
+      </SvgText>,
+    );
 
   // Bear-off pockets (edge-on capsules).
   const CAP_W = TRAY_W - 22;
@@ -222,10 +235,30 @@ export function Board({
   // the dice (same as the web board).
   const diceOrder = mover && activeDie === 1 ? [1, 0] : [0, 1];
 
-  // Cube at rest on the bar rail.
+  // The cube lives on the bar but must never overlap checkers there (ported
+  // from the web board). Find the clear space above the opponent's bar stack
+  // and below mine, and place the cube in the zone that suits its owner (me =
+  // bottom, gnubg = top), falling back to the roomier zone. A centered cube
+  // rests in the middle only when the bar is empty.
   const CUBE = 64;
   const cubeVal = board.cubeValue === 1 ? 64 : board.cubeValue;
   const showCube = !board.crawford;
+  const oppStackTop = oppBar > 0 ? H / 2 - barGap - (Math.min(oppBar, 4) - 1) * STACK_STEP - R : H / 2;
+  const myStackBottom = myBar > 0 ? H / 2 + barGap + (Math.min(myBar, 4) - 1) * STACK_STEP + R : H / 2;
+  const topSpace = oppStackTop - FRAME;
+  const bottomSpace = H - FRAME - myStackBottom;
+  const topCenter = FRAME + topSpace / 2;
+  const bottomCenter = H - FRAME - bottomSpace / 2;
+  const fits = (space: number) => space >= CUBE + 8;
+  let cubeCy: number;
+  if (board.iMayDouble && board.oppMayDouble) {
+    cubeCy = myBar === 0 && oppBar === 0 ? H / 2 : topSpace >= bottomSpace ? topCenter : bottomCenter;
+  } else if (board.iMayDouble) {
+    cubeCy = fits(bottomSpace) ? bottomCenter : topCenter;
+  } else {
+    cubeCy = fits(topSpace) ? topCenter : bottomCenter;
+  }
+  cubeCy = Math.max(FRAME + CUBE / 2, Math.min(H - FRAME - CUBE / 2, cubeCy));
 
   return (
     <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%">
@@ -264,7 +297,7 @@ export function Board({
       {counts}
 
       {showCube && (
-        <G x={barCx - CUBE / 2} y={H / 2 - CUBE / 2}>
+        <G x={barCx - CUBE / 2} y={cubeCy - CUBE / 2}>
           <Rect width={CUBE} height={CUBE} rx={10} fill={C.cube} stroke={C.cubeStroke} strokeWidth={2} />
           <SvgText x={CUBE / 2} y={CUBE / 2 + 12} fontSize={34} fontWeight="700" fill={C.cubeText} textAnchor="middle">
             {cubeVal}
@@ -274,7 +307,7 @@ export function Board({
 
       {/* gold rings on tappable source points/bar */}
       {sources.map((p) => {
-        if (p === BAR) return <Circle key={`hl${p}`} cx={barCx} cy={H / 2} r={R + 6} fill="none" stroke="#d9b24a" strokeWidth={4} opacity={0.9} />;
+        if (p === BAR) return <Circle key={`hl${p}`} cx={barCx} cy={H / 2 + barGap} r={R + 5} fill="none" stroke="#d9b24a" strokeWidth={4} opacity={0.9} />;
         const top = isTop(p);
         const cx = pointX(g, p) + COL_W / 2;
         const topIdx = Math.max(Math.min(Math.abs(pts[p] || 0), 5) - 1, 0);
