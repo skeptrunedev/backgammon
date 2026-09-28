@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { createAuth } from './auth';
 import type { Env } from './env';
-import { headTags, pageForPath } from './og-pages';
 
 const MAX_BODY_BYTES = 900 * 1024;
 
@@ -428,28 +427,6 @@ app.put('/api/training', async (c) => {
 });
 
 app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404));
-
-// App pages (routed here by wrangler.jsonc's run_worker_first) get their own
-// social tags. Link unfurlers (Slack, Discord, X, Signal, iMessage) read the
-// raw HTML and never run the SPA, so the tags must be in the response itself:
-// drop the shell's defaults and write this page's set into <head>.
-const DEFAULT_HEAD_TAGS = [
-  'title',
-  'meta[name="description"]',
-  'link[rel="canonical"]',
-  'meta[property^="og:"]',
-  'meta[name^="twitter:"]',
-];
-
-app.get('*', async (c) => {
-  const res = await c.env.ASSETS.fetch(c.req.raw);
-  if (!res.headers.get('content-type')?.includes('text/html')) return res;
-  const path = new URL(c.req.url).pathname;
-  const rewriter = new HTMLRewriter();
-  for (const selector of DEFAULT_HEAD_TAGS) rewriter.on(selector, { element: (el) => void el.remove() });
-  rewriter.on('head', { element: (el) => void el.append(headTags(pageForPath(path), path), { html: true }) });
-  return rewriter.transform(res);
-});
 
 // Anything else that reaches the worker falls through to static assets.
 app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));

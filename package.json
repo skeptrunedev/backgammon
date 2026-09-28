@@ -7,8 +7,7 @@
     "fetch-engine": "bash scripts/fetch-engine.sh",
     "dev": "vite",
     "dev:api": "wrangler dev --port 8787",
-    "og": "node scripts/og-cards.ts",
-    "build": "tsc -b && tsc -p worker && npm run og && vite build",
+    "build": "tsc -b && tsc -p worker && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "type": "tsc -b --noEmit && tsc -p worker",
@@ -42,7 +41,6 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",
-    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",
