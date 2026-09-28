@@ -8,7 +8,10 @@
     "directory": "./dist",
     "not_found_handling": "single-page-application",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    // The API, plus every app route so the Worker can write that page's
+    // social tags into the HTML (see worker/og-pages.ts). Other paths are
+    // served straight from the assets with index.html's home-page tags.
+    "run_worker_first": ["/api/*", "/", "/play/*", "/match/*", "/trends", "/training", "/pip", "/privacy"]
   },
   "routes": [
     {

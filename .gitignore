@@ -7,3 +7,5 @@ public/engine/LICENSE-NOTICE.txt
 *.local
 .DS_Store
 .dev.vars
+# Rendered at build by scripts/og-cards.ts
+public/og/

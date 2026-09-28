@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { HOME, headTags } from './worker/og-pages';
 
 export default defineConfig({
   resolve: {
@@ -15,6 +16,9 @@ export default defineConfig({
     },
   },
   plugins: [
+    // The home page's social tags go straight into index.html, so every path
+    // the Worker doesn't rewrite (see worker/index.ts) still unfurls.
+    { name: 'og-head', transformIndexHtml: (html: string) => html.replace('<title>Backgammon</title>', headTags(HOME, '/')) },
     react(),
     tailwindcss(),
     VitePWA({
@@ -23,6 +27,8 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,wasm,data}'],
+        // Link-preview cards are for unfurlers, not the offline app.
+        globIgnores: ['og/**'],
         // SPA deep links (e.g. /play/:id) resolve to the app shell offline,
         // but never hijack the API.
         navigateFallback: '/index.html',
