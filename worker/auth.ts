@@ -1,5 +1,5 @@
 import { betterAuth } from 'better-auth';
-import { emailOTP } from 'better-auth/plugins';
+import { bearer, emailOTP } from 'better-auth/plugins';
 import { Kysely } from 'kysely';
 import { D1Dialect } from 'kysely-d1';
 import { WorkerMailer } from 'worker-mailer';
@@ -20,6 +20,9 @@ export function createAuth(env: Env) {
       'http://localhost:8787',
     ],
     plugins: [
+      // Agents (see src/lib/agentPrompts.ts) sign in with the email code and
+      // then send the set-auth-token value as Authorization: Bearer.
+      bearer(),
       emailOTP({
         otpLength: 6,
         expiresIn: 600,
