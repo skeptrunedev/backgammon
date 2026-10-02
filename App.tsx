@@ -21,7 +21,6 @@ export default function App() {
 
   const b = state.board;
   const conts = state.phase === 'moving' ? session.continuationsNow() : [];
-  const sources = [...new Set(conts.map((h) => h.from))];
   const pips = b ? pipCounts(b.points) : null;
 
   const hopDist = (h: { from: number; to: number }) => h.from - (h.to === 0 ? 0 : h.to);
@@ -75,7 +74,6 @@ export default function App() {
               wide={wide}
               aspect={aspect}
               pendingHops={state.pendingHops}
-              sources={sources}
               onPointClick={onPointClick}
               activeDie={firstDie}
               onDieClick={state.phase === 'moving' ? () => setFirstDie((f) => (f === 0 ? 1 : 0)) : undefined}

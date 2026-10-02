@@ -128,7 +128,6 @@ function Die({ x, y, value, mine, used, onPress }: { x: number; y: number; value
 export function Board({
   board,
   pendingHops = [],
-  sources = [],
   onPointClick,
   activeDie = 0,
   onDieClick,
@@ -137,7 +136,6 @@ export function Board({
 }: {
   board: BoardState;
   pendingHops?: CheckerHop[];
-  sources?: number[];
   onPointClick?: (p: number) => void;
   /** Which of the player's dice is played first; it's drawn in the left slot. */
   activeDie?: number;
@@ -304,16 +302,6 @@ export function Board({
           </SvgText>
         </G>
       )}
-
-      {/* gold rings on tappable source points/bar */}
-      {sources.map((p) => {
-        if (p === BAR) return <Circle key={`hl${p}`} cx={barCx} cy={H / 2 + barGap} r={R + 5} fill="none" stroke="#d9b24a" strokeWidth={4} opacity={0.9} />;
-        const top = isTop(p);
-        const cx = pointX(g, p) + COL_W / 2;
-        const topIdx = Math.max(Math.min(Math.abs(pts[p] || 0), 5) - 1, 0);
-        const cy = top ? FRAME + R + 4 + topIdx * STACK_STEP : H - FRAME - R - 4 - topIdx * STACK_STEP;
-        return <Circle key={`hl${p}`} cx={cx} cy={cy} r={R + 5} fill="none" stroke="#d9b24a" strokeWidth={4} opacity={0.9} />;
-      })}
 
       {/* transparent tap zones on top (points 1-24 + bar) */}
       {onPointClick &&
