@@ -1,4 +1,5 @@
 import type { Decision, CheckerDecision, CubeDecision } from '../game/records';
+import { apiFetch } from '../lib/api';
 import type { BoardState } from '../engine/types';
 import { pipCounts } from '../game/rules';
 import { parseMoveString, hopsToNotation } from '../engine/parse';
@@ -24,7 +25,7 @@ export interface AiSettings {
 // Settings live server-side per account: the Anthropic key is encrypted at rest
 // and never sent back to the browser. GET reports only whether a key is set.
 export async function loadAiSettings(): Promise<AiSettings> {
-  const res = await fetch('/api/settings', { credentials: 'include' });
+  const res = await apiFetch('/api/settings');
   if (res.status === 401) return { hasKey: false, model: 'claude-opus-4-8' };
   if (!res.ok) throw new Error('Failed to load settings');
   return res.json();
@@ -32,9 +33,8 @@ export async function loadAiSettings(): Promise<AiSettings> {
 
 // apiKey undefined → keep the existing key (model-only save). '' → clear it.
 export async function saveAiSettings(s: { apiKey?: string; model: string }): Promise<AiSettings> {
-  const res = await fetch('/api/settings', {
+  const res = await apiFetch('/api/settings', {
     method: 'PUT',
-    credentials: 'include',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(s),
   });
@@ -116,9 +116,8 @@ export function buildPrompt(d: Decision): string {
 export async function explainDecision(d: Decision): Promise<string> {
   // The worker holds the (encrypted) key and calls Anthropic; we only send the
   // assembled prompt, so the key never touches the browser.
-  const res = await fetch('/api/explain', {
+  const res = await apiFetch('/api/explain', {
     method: 'POST',
-    credentials: 'include',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ prompt: buildPrompt(d) }),
   });

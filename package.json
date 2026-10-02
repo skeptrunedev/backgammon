@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:api": "wrangler dev --port 8787",
     "build": "tsc -b && tsc -p worker && vite build",
+    "build:native": "tsc -b && vite build --mode native",
     "preview": "vite preview",
     "test": "vitest run",
     "type": "tsc -b --noEmit && tsc -p worker",

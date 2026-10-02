@@ -8,7 +8,7 @@ import TrainingScreen from './TrainingScreen';
 import PipCountScreen from './PipCountScreen';
 import PrivacyScreen from './PrivacyScreen';
 import AuthDialog from './AuthDialog';
-import { authClient, useUser } from '../auth/client';
+import { signOut, useUser } from '../auth/client';
 import { pullMatches } from '../game/sync';
 import { syncTrainingState } from '../game/training';
 import { getSession } from '../game/session';
@@ -200,7 +200,7 @@ function AppDrawer() {
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    void authClient.signOut();
+                    void signOut();
                   }}
                   className="flex items-center gap-3 rounded-lg px-1 py-2 text-sm text-foreground hover:bg-accent"
                 >

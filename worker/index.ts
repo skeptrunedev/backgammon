@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { createAuth } from './auth';
 import type { Env } from './env';
 
@@ -96,6 +97,22 @@ async function decryptSecret(env: Env, ciphertext: string, iv: string): Promise<
 }
 
 const app = new Hono<{ Bindings: Env }>();
+
+// The native app's bundled PWA runs on a loopback origin (http://localhost:<port>)
+// and calls this API cross-origin with a bearer token. No cookies are involved
+// (credentials stay off), so allowing that origin grants nothing a token-less
+// page could use.
+const NATIVE_APP_ORIGIN = /^http:\/\/localhost(:\d+)?$/;
+app.use(
+  '/api/*',
+  cors({
+    origin: (origin) => (NATIVE_APP_ORIGIN.test(origin) ? origin : null),
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['set-auth-token'],
+    maxAge: 86400,
+  }),
+);
 
 app.all('/api/auth/*', (c) => createAuth(c.env).handler(c.req.raw));
 

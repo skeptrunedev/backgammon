@@ -18,6 +18,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Menu, X, Home, Plus, TrendingUp, Flag, LogOut, Trophy, Target, Maximize, Minimize, Dumbbell, Calculator } from 'lucide-react';
 import { useFullscreen } from './useFullscreen';
+import { IS_NATIVE } from '../lib/api';
 
 function Kbd({ children }: { children: ReactNode }) {
   return (
@@ -345,18 +346,21 @@ export default function PlayScreen() {
               </button>
 
               {/* Fullscreen + landscape lock (YouTube-style): real landscape even
-                  with the phone's rotation locked. No-ops where unsupported. */}
-              <button
-                type="button"
-                onClick={() => {
-                  setDrawerOpen(false);
-                  toggleFullscreen();
-                }}
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
-              >
-                {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
-                {isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
-              </button>
+                  with the phone's rotation locked. No-ops where unsupported. The
+                  native app is always full-screen landscape, so it has no toggle. */}
+              {!IS_NATIVE && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    toggleFullscreen();
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent"
+                >
+                  {isFullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
+                  {isFullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'}
+                </button>
+              )}
 
               <Separator />
 

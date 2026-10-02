@@ -2,6 +2,7 @@
 // silent no-op (console.debug only). Imports idb-keyval directly — NOT
 // ./store — so store.ts can import schedulePush without a circular import.
 import { get, set, keys } from 'idb-keyval';
+import { apiFetch } from '../lib/api';
 import type { MatchRecord } from './records';
 
 const PREFIX = 'match:';
@@ -50,7 +51,7 @@ function setStatus(next: SyncStatus) {
 export async function pushMatch(rec: MatchRecord): Promise<void> {
   if (deletedIds.has(rec.id)) return;
   try {
-    const res = await fetch(`/api/matches/${encodeURIComponent(rec.id)}`, {
+    const res = await apiFetch(`/api/matches/${encodeURIComponent(rec.id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rec),
@@ -92,7 +93,7 @@ export async function deleteMatchRemote(id: string): Promise<void> {
     pushTimers.delete(id);
   }
   try {
-    const res = await fetch(`/api/matches/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const res = await apiFetch(`/api/matches/${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (!res.ok) console.debug(`[sync] delete ${id} skipped (HTTP ${res.status})`);
   } catch (err) {
     console.debug('[sync] delete failed (offline?)', err);
@@ -100,7 +101,7 @@ export async function deleteMatchRemote(id: string): Promise<void> {
 }
 
 async function fetchDetail(id: string): Promise<MatchRecord | null> {
-  const res = await fetch(`/api/matches/${encodeURIComponent(id)}`);
+  const res = await apiFetch(`/api/matches/${encodeURIComponent(id)}`);
   if (!res.ok) return null;
   const body = (await res.json()) as { match: MatchRecord };
   return body.match ?? null;
@@ -149,7 +150,7 @@ async function doPull(): Promise<number> {
   setStatus('syncing');
   let summaries: MatchSummary[];
   try {
-    const res = await fetch('/api/matches');
+    const res = await apiFetch('/api/matches');
     if (!res.ok) {
       console.debug(`[sync] pull skipped (HTTP ${res.status})`);
       setStatus(res.status === 401 ? 'idle' : 'error');

@@ -1,4 +1,5 @@
 import { get, set } from 'idb-keyval';
+import { apiFetch } from '../lib/api';
 
 export const DEFAULT_REVIEW_INTERVALS = [1, 3, 7, 14, 30] as const;
 export type PipMethod = 'urquhart' | '321' | 'criss-cross';
@@ -119,7 +120,7 @@ export async function loadTrainingState(): Promise<TrainingState> {
 
 async function pushTrainingState(state: TrainingState): Promise<void> {
   try {
-    const res = await fetch('/api/training', {
+    const res = await apiFetch('/api/training', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state),
     });
     if (!res.ok) console.debug(`[training] push skipped (HTTP ${res.status})`);
@@ -146,7 +147,7 @@ export async function updateTrainingState(
 export async function syncTrainingState(): Promise<TrainingState> {
   const local = await get<TrainingState>(KEY);
   try {
-    const res = await fetch('/api/training');
+    const res = await apiFetch('/api/training');
     if (!res.ok) return local ?? defaultTrainingState();
     const body = await res.json() as { state: TrainingState | null };
     const merged = local && body.state

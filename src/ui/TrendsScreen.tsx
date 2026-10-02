@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { apiFetch } from '../lib/api';
 import { InfoIcon, LoaderCircleIcon, RefreshCwIcon, SparklesIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
@@ -58,7 +59,7 @@ function hash(s: string): string {
 // it follows the user across devices. GET returns the stored analysis (or nulls).
 async function loadAnalysis(): Promise<CachedAnalysis | null> {
   try {
-    const res = await fetch('/api/trends', { credentials: 'include' });
+    const res = await apiFetch('/api/trends');
     if (!res.ok) return null;
     const d = (await res.json().catch(() => ({}))) as Partial<CachedAnalysis>;
     if (typeof d?.sig === 'string' && typeof d?.text === 'string') {
@@ -72,9 +73,8 @@ async function loadAnalysis(): Promise<CachedAnalysis | null> {
 
 async function saveAnalysis(entry: CachedAnalysis): Promise<void> {
   try {
-    await fetch('/api/trends', {
+    await apiFetch('/api/trends', {
       method: 'PUT',
-      credentials: 'include',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(entry),
     });
@@ -241,9 +241,8 @@ function MistakesCard({ records }: { records: MatchRecord[] }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/explain', {
+      const res = await apiFetch('/api/explain', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ prompt, maxTokens: 1024, system: SYSTEM_PROMPT }),
       });
