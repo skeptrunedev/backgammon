@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.bundleserver'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.bundleserver"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+  sourceSets {
+    // The PWA production build (scripts/build-web.sh) ships as APK assets
+    // under www/, merged into the app like any library's assets.
+    main.assets.srcDirs += "${projectDir}/../web"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}

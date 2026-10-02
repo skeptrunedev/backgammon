@@ -1,0 +1,44 @@
+# EAS Build upload rules for the native app in mobile/. When this file exists,
+# EAS ignores every .gitignore, so it restates them (root, then mobile/) with one
+# difference: the PWA bundle mobile/modules/bundle-server/web/ (git-ignored build
+# output from mobile/scripts/build-web.sh) IS uploaded, because the app ships it.
+# Keep in sync with .gitignore and mobile/.gitignore.
+
+# --- .gitignore (repo root) ---
+node_modules/
+dist/
+dist-native/
+public/engine/gnubg.js
+public/engine/gnubg.wasm
+public/engine/gnubg.data
+public/engine/LICENSE-NOTICE.txt
+*.local
+.DS_Store
+.dev.vars
+.wrangler/
+
+# --- mobile/.gitignore ---
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.pem
+.env*.local
+*.tsbuildinfo
+mobile/ios/
+mobile/android/
+# Signing material never leaves this machine (eas.json: credentialsSource local
+# reads it locally).
+mobile/credentials.json
+mobile/credentials/

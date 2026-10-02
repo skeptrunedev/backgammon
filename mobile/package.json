@@ -1,28 +1,31 @@
 {
   "name": "backgammon-mobile",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.ts",
   "dependencies": {
-    "@react-native-async-storage/async-storage": "2.2.0",
-    "expo": "~57.0.4",
-    "expo-status-bar": "~57.0.0",
+    "expo": "~57.0.26",
+    "expo-file-system": "~57.0.7",
+    "expo-sharing": "~57.0.22",
+    "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-native": "0.86.0",
-    "react-native-svg": "15.15.4",
-    "react-native-web": "^0.21.2",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
     "react-native-webview": "13.16.1"
   },
   "devDependencies": {
-    "@expo/ngrok": "^4.1.3",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "build:web": "bash scripts/build-web.sh",
+    "build:ios": "npm run build:web && eas build --platform ios --profile production",
+    "build:android": "npm run build:web && eas build --platform android --profile production",
+    "typecheck": "tsc --noEmit",
+    "eas-build-post-install": "test -s modules/bundle-server/web/www/index.html || { echo 'Web bundle missing: run npm run build:web before eas build' >&2; exit 1; }"
   },
   "private": true
 }

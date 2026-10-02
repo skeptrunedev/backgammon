@@ -94,6 +94,13 @@ assets.
   `src/game/records.ts`); owner-enforced, bodies over 900 KB are rejected
   with `413`. Returns `{ ok: true, updatedAt }`.
 - `DELETE /api/matches/:id` — owner-enforced delete.
+- `DELETE /api/me` — delete the account and all of its data (matches,
+  settings, trends, training, sessions, OTPs, user row) in one D1 batch.
+
+The native app calls the same API cross-origin with
+`Authorization: Bearer <token>` instead of the cookie (better-auth `bearer`
+plugin; the token arrives in the `set-auth-token` header at sign-in). CORS
+allows only `http://localhost:<port>` origins, without credentials.
 
 ### Local development
 
@@ -121,6 +128,33 @@ Database: D1 `bg` (`eba8110a-38f9-4740-a04c-02cdde0e2f02`). Migrations live in
 `migrations/` (`0001` better-auth schema, `0002` matches table). The better-auth
 schema was generated with `npx @better-auth/cli generate` — regenerate it if you
 upgrade better-auth or add plugins with their own tables.
+
+## iOS and Android apps (`mobile/`)
+
+The store apps are a thin Expo shell around this PWA, not a port. `mobile/`
+builds the PWA with `npm run build:native` (`vite build --mode native`: API at
+`https://bg.skeptrune.com`, bearer auth, no service worker), bundles the output
+into the app binary, and serves it to a full-screen WebView from an in-app
+static HTTP server on `http://localhost:47123` (Expo module
+`mobile/modules/bundle-server`, Swift on iOS, Kotlin on Android, loopback
+only). Everything runs offline except the account API: the gnubg WASM, the Web
+Worker and IndexedDB behave exactly as they do in a browser. Every PWA change
+ships in the next app build.
+
+```bash
+cd mobile
+npm ci
+npm run build:web       # builds the PWA into modules/bundle-server/web/www (git-ignored)
+npm run build:ios       # build:web + eas build -p ios --profile production
+npm run build:android   # build:web + eas build -p android --profile production
+```
+
+EAS uploads the git-ignored web bundle because the repo-root `.easignore`
+(which replaces every `.gitignore` for EAS) doesn't exclude it; keep the two in
+sync. Build numbers are remote (`appVersionSource: remote`, production
+`autoIncrement`); the marketing version is `expo.version` in `mobile/app.json`.
+Signing material (`mobile/credentials.json`, `mobile/credentials/`) is local
+only and never committed.
 
 ## Engine licensing
 

@@ -43,3 +43,6 @@ yarn-error.*
 # EAS local signing secrets
 credentials.json
 credentials/
+
+# PWA build bundled into the app (scripts/build-web.sh); shipped to EAS via ../.easignore
+/modules/bundle-server/web/

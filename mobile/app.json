@@ -3,7 +3,7 @@
     "name": "Backgammon",
     "slug": "backgammon-mobile",
     "owner": "skeptrunes-team",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -32,6 +32,16 @@
       "eas": {
         "projectId": "e2be5ce6-037d-4f98-b2dc-f8f380fde89c"
       }
-    }
+    },
+    "plugins": [
+      "./modules/bundle-server/app.plugin.js",
+      [
+        "expo-status-bar",
+        {
+          "hidden": true,
+          "style": "light"
+        }
+      ]
+    ]
   }
 }
