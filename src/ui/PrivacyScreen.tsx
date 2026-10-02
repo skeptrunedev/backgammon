@@ -71,13 +71,14 @@ export default function PrivacyScreen() {
       <Section title="Deleting your data">
         <p>
           You can delete any match from the home screen, which also deletes the synced copy. To
-          remove your stored API key, or delete your whole account and everything linked to it,
-          email{' '}
+          delete your whole account and everything linked to it (synced matches, training
+          progress, trends analysis and your stored API key), open the menu while signed in and
+          choose <strong>Delete account</strong>. It takes effect immediately. You can also email{' '}
           <a className="text-primary underline" href={`mailto:${CONTACT}`}>
             {CONTACT}
           </a>{' '}
-          from the address you signed in with and we will delete it. Data on your device is
-          removed when you clear the site&apos;s data or uninstall the app.
+          from the address you signed in with and we will delete it for you. Data on your device
+          is removed when you clear the site&apos;s data or uninstall the app.
         </p>
       </Section>
 

@@ -128,6 +128,29 @@ app.get('/api/me', async (c) => {
   return c.json({ user: { id: user.id, email: user.email } });
 });
 
+// Delete the signed-in account and everything stored for it (App Store
+// guideline 5.1.1(v)). One D1 batch, so it is all-or-nothing: app data first,
+// then better-auth's sessions, linked accounts, pending OTPs and the user row.
+app.delete('/api/me', async (c) => {
+  const user = await getSessionUser(c);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const db = c.env.DB;
+  const otpIdentifiers = ['sign-in', 'email-verification', 'forget-password'].map(
+    (type) => `${type}-otp-${user.email}`,
+  );
+  await db.batch([
+    db.prepare('DELETE FROM matches WHERE user_id = ?1').bind(user.id),
+    db.prepare('DELETE FROM user_settings WHERE user_id = ?1').bind(user.id),
+    db.prepare('DELETE FROM trends_analysis WHERE user_id = ?1').bind(user.id),
+    db.prepare('DELETE FROM training_state WHERE user_id = ?1').bind(user.id),
+    db.prepare('DELETE FROM session WHERE "userId" = ?1').bind(user.id),
+    db.prepare('DELETE FROM account WHERE "userId" = ?1').bind(user.id),
+    db.prepare('DELETE FROM verification WHERE identifier IN (?1, ?2, ?3)').bind(...otpIdentifiers),
+    db.prepare('DELETE FROM "user" WHERE id = ?1').bind(user.id),
+  ]);
+  return c.json({ ok: true });
+});
+
 app.get('/api/matches', async (c) => {
   const user = await getSessionUser(c);
   if (!user) return c.json({ error: 'Unauthorized' }, 401);

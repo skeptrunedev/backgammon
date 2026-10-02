@@ -9,11 +9,12 @@ import PipCountScreen from './PipCountScreen';
 import PrivacyScreen from './PrivacyScreen';
 import AuthDialog from './AuthDialog';
 import { signOut, useUser } from '../auth/client';
+import DeleteAccountDialog from './DeleteAccountDialog';
 import { pullMatches } from '../game/sync';
 import { syncTrainingState } from '../game/training';
 import { getSession } from '../game/session';
 import { Separator } from '@/components/ui/separator';
-import { Menu, X, Home, Plus, TrendingUp, LogIn, LogOut, Dumbbell, Calculator } from 'lucide-react';
+import { Menu, X, Home, Plus, TrendingUp, LogIn, LogOut, Dumbbell, Calculator, Trash2 } from 'lucide-react';
 import { useForcedLandscape } from './useForcedLandscape';
 
 export default function App() {
@@ -92,6 +93,7 @@ function AppDrawer() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // Quick-start a fresh 7-point match (home defaults) and jump into it.
   const startNewGame = () => {
@@ -207,6 +209,17 @@ function AppDrawer() {
                   <LogOut className="size-4" />
                   Sign out
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setDeleteOpen(true);
+                  }}
+                  className="flex items-center gap-3 rounded-lg px-1 py-2 text-sm text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="size-4" />
+                  Delete account
+                </button>
               </div>
             ) : (
               <button
@@ -235,6 +248,9 @@ function AppDrawer() {
       )}
 
       <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      {user && (
+        <DeleteAccountDialog email={user.email} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { createAuthClient } from 'better-auth/react';
 import { emailOTPClient } from 'better-auth/client/plugins';
-import { API_BASE, IS_NATIVE, getAuthToken, setAuthToken } from '../lib/api';
+import { API_BASE, IS_NATIVE, apiFetch, getAuthToken, setAuthToken } from '../lib/api';
 
 // Web: same-origin, cookie session. Native: cross-site API with a bearer token
 // (see src/lib/api.ts for why).
@@ -31,6 +31,20 @@ export async function signOut(): Promise<void> {
   } finally {
     setAuthToken(null);
   }
+}
+
+/**
+ * Permanently delete the signed-in account and all of its server-side data,
+ * then drop the local session. Throws if the server refused.
+ */
+export async function deleteAccount(): Promise<void> {
+  const res = await apiFetch('/api/me', { method: 'DELETE' });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `Could not delete the account (HTTP ${res.status}).`);
+  }
+  // The session row is gone; sign-out clears the cookie/token and the session store.
+  await signOut();
 }
 
 /** Convenience wrapper around authClient.useSession(). */
