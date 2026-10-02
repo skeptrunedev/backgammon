@@ -43,22 +43,41 @@ function Shell() {
   const canGoBack = useRef(false);
   const insets = useSafeAreaInsets();
 
+  // Bumped to remount the WebView after a failed load.
+  const [generation, setGeneration] = useState(0);
+
   // Start the bundle server, and re-check it whenever the app comes back to the
   // foreground (iOS may reclaim the listening socket while suspended).
-  const ensureServer = useCallback(() => {
-    BundleServer.start().then(
-      (o) => {
-        setError(null);
-        setOrigin((prev) => (prev === o ? prev : o));
-      },
-      (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
-    );
-  }, []);
+  const ensureServer = useCallback(
+    () =>
+      BundleServer.start().then(
+        (o) => {
+          setError(null);
+          setOrigin((prev) => (prev === o ? prev : o));
+          return true;
+        },
+        (e: unknown) => {
+          setError(e instanceof Error ? e.message : String(e));
+          return false;
+        },
+      ),
+    [],
+  );
+
+  // The web content process died (memory pressure, or killed while in the
+  // background): make sure the server is up before reloading into it.
+  const recover = useCallback(() => {
+    void ensureServer().then((up) => up && webView.current?.reload());
+  }, [ensureServer]);
+
+  const retry = useCallback(() => {
+    void ensureServer().then((up) => up && setGeneration((g) => g + 1));
+  }, [ensureServer]);
 
   useEffect(() => {
-    ensureServer();
+    void ensureServer();
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') ensureServer();
+      if (state === 'active') void ensureServer();
     });
     return () => sub.remove();
   }, [ensureServer]);
@@ -100,7 +119,7 @@ function Shell() {
       <View style={[styles.root, styles.center]}>
         <Text style={styles.errorTitle}>Backgammon couldn’t start</Text>
         <Text style={styles.errorText}>{error}</Text>
-        <Pressable onPress={ensureServer} style={styles.button}>
+        <Pressable onPress={retry} style={styles.button}>
           <Text style={styles.buttonText}>Try again</Text>
         </Pressable>
       </View>
@@ -120,6 +139,7 @@ function Shell() {
     <View style={[styles.root, frameInsets]}>
       {origin && (
         <WebView
+          key={generation}
           ref={webView}
           source={{ uri: origin + '/' }}
           style={styles.web}
@@ -130,8 +150,10 @@ function Shell() {
           onNavigationStateChange={onNavigationStateChange}
           onMessage={onMessage}
           // A crashed/killed web content process leaves a blank view: reload.
-          onContentProcessDidTerminate={() => webView.current?.reload()}
-          onRenderProcessGone={() => webView.current?.reload()}
+          onContentProcessDidTerminate={recover}
+          onRenderProcessGone={recover}
+          // The page itself failed to load (server unreachable): say so.
+          onError={(e) => setError(`Couldn’t load the app (${e.nativeEvent.description})`)}
           javaScriptEnabled
           domStorageEnabled
           // App, not a web page: no rubber-banding, zoom or OS text scaling

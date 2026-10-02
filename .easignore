@@ -38,6 +38,8 @@ yarn-error.*
 *.tsbuildinfo
 mobile/ios/
 mobile/android/
+# Store listing assets (screenshots) aren't needed to build.
+mobile/store/
 # Signing material never leaves this machine (eas.json: credentialsSource local
 # reads it locally).
 mobile/credentials.json
