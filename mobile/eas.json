@@ -43,6 +43,11 @@
         "ascApiKeyId": "3MV344G5H3",
         "ascApiKeyIssuerId": "12cc6e71-1434-4210-a757-1a3f7bc64a82",
         "appleTeamId": "63Q9XN39FV"
+      },
+      "android": {
+        "serviceAccountKeyPath": "/home/skeptrune/.config/play/play-uploader.json",
+        "track": "alpha",
+        "releaseStatus": "completed"
       }
     }
   }
