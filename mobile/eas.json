@@ -1,0 +1,49 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk",
+        "credentialsSource": "local"
+      },
+      "ios": {
+        "credentialsSource": "remote"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "android": {
+        "credentialsSource": "local"
+      },
+      "ios": {
+        "credentialsSource": "local"
+      },
+      "autoIncrement": true
+    },
+    "simulator": {
+      "ios": {
+        "simulator": true
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6789263063",
+        "ascApiKeyPath": "/home/skeptrune/Downloads/AuthKey_3MV344G5H3.p8",
+        "ascApiKeyId": "3MV344G5H3",
+        "ascApiKeyIssuerId": "12cc6e71-1434-4210-a757-1a3f7bc64a82",
+        "appleTeamId": "63Q9XN39FV"
+      }
+    }
+  }
+}
